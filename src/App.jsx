@@ -3,7 +3,7 @@ import {
   ArrowUpRight, ArrowDown, Github, Linkedin, Download,
   Code2, BrainCircuit, Cloud, Database, Menu, X,
 } from 'lucide-react';
-import CharacterStage from './CharacterStage.jsx';
+import AvatarStage from './AvatarStage.jsx';
 
 const BASE = import.meta.env.BASE_URL;
 const RESUME = BASE + 'Adhik_Chintalwar_Resume.pdf';
@@ -46,7 +46,7 @@ export default function App() {
       </header>
 
       <div className="split">
-        <aside className="col-stage"><CharacterStage /></aside>
+        <aside className="col-stage"><AvatarStage /></aside>
 
         <main className="col-copy">
           <section className="hero" id="home">
