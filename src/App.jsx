@@ -1,20 +1,130 @@
-import React,{useEffect,useRef,useState} from 'react';
-import {ArrowUpRight,ArrowDown,ArrowRight,Github,Linkedin,Mail,Download,Code2,BrainCircuit,Cloud,Database,Menu,X} from 'lucide-react';
-const BASE=import.meta.env.BASE_URL;
-const skills=[{icon:BrainCircuit,name:'AI / ML',desc:'Intelligent systems & applied AI'},{icon:Code2,name:'Full-Stack',desc:'Java · Angular · .NET'},{icon:Cloud,name:'Cloud & DevOps',desc:'AWS · Azure · deployment'},{icon:Database,name:'Data & Systems',desc:'APIs · architecture · analytics'}];
-const work=[{company:'Agilysys',time:'2025 — Present',role:'Software Engineering',desc:'Building and improving enterprise software systems.'},{company:'Walmart',time:'2024',role:'Software Engineering',desc:'Experience delivering software in large-scale environments.'},{company:'Cigna',time:'2022 — 2023',role:'Software Engineering',desc:'Engineering experience across application development and services.'}];
-function App(){const hero=useRef(null);const [scroll,setScroll]=useState(0);const [pointer,setPointer]=useState({x:0,y:0});const [menu,setMenu]=useState(false);
-useEffect(()=>{let frame=0;const update=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>setScroll(window.scrollY));};window.addEventListener('scroll',update,{passive:true});return()=>{window.removeEventListener('scroll',update);cancelAnimationFrame(frame)}} ,[]);
-const progress=Math.min(1,scroll/(typeof window!=='undefined'?window.innerHeight:900));const tilt=pointer.x*7+progress*12;const lean=pointer.y*-4-progress*3;
-return <div className="site"><header className="topbar"><a className="logo" href="#home">AC<span>_</span></a><nav className={menu?'nav open':'nav'}>{[['Home','#home'],['About','#about'],['Experience','#experience'],['Projects','#projects'],['Contact','#contact']].map(([name,href])=><a key={name} onClick={()=>setMenu(false)} href={href}>{name}</a>)}</nav><a className="header-cta" href={BASE+'Adhik_Chintalwar_Resume.pdf'} target="_blank" rel="noreferrer">Resume <ArrowUpRight size={16}/></a><button className="menu" aria-label="Toggle navigation" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></header>
-<main><section className="hero" id="home" ref={hero} onPointerMove={e=>{if(e.pointerType==='mouse'){const r=e.currentTarget.getBoundingClientRect();setPointer({x:(e.clientX-r.left)/r.width-.5,y:(e.clientY-r.top)/r.height-.5})}}} onPointerLeave={()=>setPointer({x:0,y:0})}>
-<div className="grid-glow"/><div className="orb orb-green"/><div className="orb orb-red"/><div className="ring" style={{transform:`translate(-50%,-50%) rotate(${progress*19}deg) rotateY(${tilt*.3}deg)`}}/>
-<div className="hero-copy"><div className="eyebrow"><span className="pulse"/> HELLO, I'M</div><h1>ADHIK <span>CHINTALWAR</span></h1><h2><b>//</b> AI ENGINEER &<br/> FULL-STACK DEVELOPER</h2><p>Building intelligent, scalable systems at the intersection of AI, data, and modern web technologies.</p><div className="actions"><a className="btn primary" href="#projects">Explore my work <ArrowRight size={18}/></a><a className="btn secondary" href="#contact">Get in touch <ArrowUpRight size={18}/></a></div></div>
-<div className="portrait-wrap" style={{transform:`translate3d(${pointer.x*12}px,${progress*34}px,0) perspective(1100px) rotateY(${tilt}deg) rotateX(${lean}deg) scale(${1+progress*.035})`}}><div className="portrait-shadow"/><img className="portrait" src={BASE+'adhik-portrait.png'} alt="Portrait of Adhik Chintalwar"/><div className="portrait-light"/></div>
-<div className="hero-skills">{skills.map(({icon:Icon,name,desc},i)=><div className="skill-glass" key={name} style={{transform:`translate3d(${pointer.x*(i+1)*-7}px,${pointer.y*(i+1)*-5}px,0)`}}><Icon size={22}/><div><strong>{name}</strong><small>{desc}</small></div></div>)}</div>
-<div className="hero-bottom"><span>AI <i/> SOFTWARE <i/> PRODUCT <i/> SYSTEMS</span><a href="#about">SCROLL TO EXPLORE <ArrowDown size={18}/></a></div></section>
-<section className="section about" id="about"><div className="section-tag">01 / ABOUT</div><div className="section-grid"><h2>Engineering<br/><em>what's next.</em></h2><div><p className="lead">I'm a software engineer focused on building useful, reliable technology — from full-stack applications to AI-powered experiences.</p><p>My background includes engineering experience at Agilysys, Walmart, and Cigna. I work across modern applications, services, cloud platforms, and emerging AI workflows.</p><a className="text-link" href={BASE+'Adhik_Chintalwar_Resume.pdf'} target="_blank" rel="noreferrer">View current resume <Download size={18}/></a></div></div></section>
-<section className="section experience" id="experience"><div className="section-tag">02 / EXPERIENCE</div><h2>Where I've <em>built.</em></h2><div className="timeline">{work.map(w=><article className="job" key={w.company}><span>{w.time}</span><div><h3>{w.company}</h3><strong>{w.role}</strong><p>{w.desc}</p></div><ArrowUpRight size={22}/></article>)}</div><p className="section-note">Brief overview for now — detailed achievements will be updated with the revised resume.</p></section>
-<section className="section projects" id="projects"><div className="section-tag">03 / PROJECTS</div><h2>Selected <em>work.</em></h2><div className="project-grid"><article className="project-card"><div className="project-art art-ai"><BrainCircuit size={82}/></div><span>01 / AI APPLICATIONS</span><h3>AI Interview OS</h3><p>An interview preparation application exploring AI-powered answer evaluation, personalized learning, and progress tracking.</p><div className="tags"><span>AI</span><span>React Native</span><span>Product</span></div></article><article className="project-card"><div className="project-art art-systems"><Code2 size={82}/></div><span>02 / SOFTWARE SYSTEMS</span><h3>Full-Stack Engineering</h3><p>Enterprise application development across APIs, modern interfaces, cloud services, and software integrations.</p><div className="tags"><span>Java</span><span>Angular</span><span>.NET</span></div></article></div><p className="section-note">Project details and links can be expanded when we update your portfolio content.</p></section>
-<section className="section contact" id="contact"><div className="section-tag">04 / CONTACT</div><h2>Let's build <em>something.</em></h2><p>Open to meaningful engineering conversations, collaboration, and new opportunities.</p><div className="contact-links"><a href="https://github.com/AdhikChintalwar" target="_blank" rel="noreferrer"><Github/> GitHub <ArrowUpRight/></a><a href="https://www.linkedin.com/" target="_blank" rel="noreferrer"><Linkedin/> LinkedIn <ArrowUpRight/></a></div><small>LinkedIn link is a placeholder until your profile URL is confirmed.</small></section></main><footer><span>© {new Date().getFullYear()} Adhik Chintalwar</span><span>DESIGNED TO BUILD WHAT'S NEXT.</span></footer></div>}
-export default App;
+import React, { useState } from 'react';
+import {
+  ArrowUpRight, ArrowDown, Github, Linkedin, Download,
+  Code2, BrainCircuit, Cloud, Database, Menu, X,
+} from 'lucide-react';
+import CharacterStage from './CharacterStage.jsx';
+
+const BASE = import.meta.env.BASE_URL;
+const RESUME = BASE + 'Adhik_Chintalwar_Resume.pdf';
+
+const links = [
+  ['Home', '#home'], ['About', '#about'], ['Experience', '#experience'],
+  ['Projects', '#projects'], ['Contact', '#contact'],
+];
+const skills = [
+  { icon: BrainCircuit, name: 'AI / ML', desc: 'Intelligent systems and applied AI' },
+  { icon: Code2, name: 'Full-stack', desc: 'Java, Angular, .NET' },
+  { icon: Cloud, name: 'Cloud and DevOps', desc: 'AWS, Azure, deployment' },
+  { icon: Database, name: 'Data and systems', desc: 'APIs, architecture, analytics' },
+];
+const work = [
+  { company: 'Agilysys', time: '2025 – Present', role: 'Software Engineering', desc: 'Building and improving enterprise software systems.' },
+  { company: 'Walmart', time: '2024', role: 'Software Engineering', desc: 'Experience delivering software in large-scale environments.' },
+  { company: 'Cigna', time: '2022 – 2023', role: 'Software Engineering', desc: 'Engineering experience across application development and services.' },
+];
+const projects = [
+  { icon: BrainCircuit, name: 'AI Interview OS', desc: 'An interview preparation application exploring AI-powered answer evaluation, personalized learning, and progress tracking.', tags: ['AI', 'React Native', 'Product'] },
+  { icon: Code2, name: 'Full-Stack Engineering', desc: 'Enterprise application development across APIs, modern interfaces, cloud services, and software integrations.', tags: ['Java', 'Angular', '.NET'] },
+];
+
+export default function App() {
+  const [menu, setMenu] = useState(false);
+  return (
+    <div className="site">
+      <header className="topbar">
+        <a className="logo" href="#home">AC<span>_</span></a>
+        <nav className={menu ? 'nav open' : 'nav'} aria-label="Primary">
+          {links.map(([name, href]) => (
+            <a key={name} href={href} onClick={() => setMenu(false)}>{name}</a>
+          ))}
+        </nav>
+        <a className="header-cta" href={RESUME} target="_blank" rel="noreferrer">Resume <ArrowUpRight size={15} /></a>
+        <button className="menu" aria-label="Toggle navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+          {menu ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </header>
+
+      <div className="split">
+        <aside className="col-stage"><CharacterStage /></aside>
+
+        <main className="col-copy">
+          <section className="hero" id="home">
+            <p className="hello">Hello, I’m</p>
+            <h1>Adhik Chintalwar</h1>
+            <h2>AI engineer and full-stack developer</h2>
+            <p className="lede">Building intelligent, scalable systems at the intersection of AI, data, and modern web technologies.</p>
+            <div className="actions">
+              <a className="btn primary" href="#projects">Explore my work</a>
+              <a className="btn" href="#contact">Get in touch</a>
+            </div>
+            <div className="cue" aria-hidden="true">
+              <span className="track"><svg className="cursor" width="18" height="18" viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-3 6z" fill="currentColor" /></svg></span>
+              <span className="cue-desktop">Move your cursor to get my attention</span>
+              <span className="cue-touch">Tap to get my attention</span>
+            </div>
+            <a className="scroll" href="#about">Scroll to explore <ArrowDown size={16} /></a>
+          </section>
+
+          <section className="sec" id="about">
+            <h2>Engineering what’s next</h2>
+            <p className="lead">I’m a software engineer focused on building useful, reliable technology — from full-stack applications to AI-powered experiences.</p>
+            <p>My background includes engineering experience at Agilysys, Walmart, and Cigna. I work across modern applications, services, cloud platforms, and emerging AI workflows.</p>
+            <a className="text-link" href={RESUME} target="_blank" rel="noreferrer">View current resume <Download size={16} /></a>
+          </section>
+
+          <section className="sec" id="experience">
+            <h2>Where I’ve built</h2>
+            <ul className="rows">
+              {work.map((w) => (
+                <li key={w.company}>
+                  <span className="when">{w.time}</span>
+                  <div><h3>{w.company}</h3><strong>{w.role}</strong><p>{w.desc}</p></div>
+                </li>
+              ))}
+            </ul>
+            <p className="note">Brief overview for now. Detailed achievements will be added with the revised resume.</p>
+          </section>
+
+          <section className="sec" id="projects">
+            <h2>Selected work</h2>
+            <ul className="rows">
+              {projects.map(({ icon: Icon, name, desc, tags }) => (
+                <li key={name}>
+                  <span className="when"><Icon size={26} /></span>
+                  <div>
+                    <h3>{name}</h3>
+                    <p>{desc}</p>
+                    <div className="tags">{tags.map((t) => <span key={t}>{t}</span>)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="note">Project details and links can be expanded as your portfolio content is updated.</p>
+          </section>
+
+          <section className="sec" id="skills">
+            <h2>Skills</h2>
+            <ul className="skills">
+              {skills.map(({ icon: Icon, name, desc }) => (
+                <li key={name}><Icon size={22} /><div><strong>{name}</strong><p>{desc}</p></div></li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="sec" id="contact">
+            <h2>Let’s build something</h2>
+            <p className="lead">Open to meaningful engineering conversations, collaboration, and new opportunities.</p>
+            <div className="contact-links">
+              <a href="https://github.com/AdhikChintalwar" target="_blank" rel="noreferrer"><Github size={20} /> GitHub <ArrowUpRight size={16} /></a>
+              <a href="https://www.linkedin.com/" target="_blank" rel="noreferrer"><Linkedin size={20} /> LinkedIn <ArrowUpRight size={16} /></a>
+            </div>
+            <p className="note">The LinkedIn link is a placeholder until your profile URL is confirmed.</p>
+          </section>
+
+          <footer><span>© {new Date().getFullYear()} Adhik Chintalwar</span></footer>
+        </main>
+      </div>
+    </div>
+  );
+}
