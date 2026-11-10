@@ -1,34 +1,21 @@
-# Adhik Chintalwar — Real GT3 RS Cinematic Portfolio (V7)
+# Adhik AI Portfolio — GitHub Pages
 
-This package **includes the actual Porsche GLB supplied by the user** at `public/models/porsche-911-gt3-rs.glb` (16.4 MB). No Blender export or external Sketchfab embed is needed.
+A lightweight React/Vite portfolio with portrait-based 3D-style motion and black, green, red studio design.
 
-## Start
-
+## Install
 ```bash
 npm install
 npm run build
-npm run dev -- --strictPort
+npm run dev
 ```
 
-Open http://localhost:5175. Stop any previous Vite instance on 5175 first. BABY on 5173 is unaffected.
+## Publish to existing repository
+**Back up your existing local project first.** Extract this ZIP into a separate folder. Then copy its contents (including hidden `.github`) into your existing Git repository, or use the instructions in the ChatGPT response. Run `npm install`, `npm run build`, then `git add -A && git commit -m "Redesign portfolio" && git push origin main`.
 
-## 3D implementation
+Repo: `AdhikChintalwar/adhik-portfolio`. GitHub Pages base: `/adhik-portfolio/`.
 
-- GLB geometry inspected: 408 nodes, 291 meshes, 0 built-in animation clips.
-- The model's +Z points toward the front, and it is normalized from centimeter-like coordinates to 5.25 Three.js units in length.
-- Scroll controls an eight-transition camera route around the real car, with a final rear-view drive-away sequence.
-- Four named wheel assemblies and the named steering-wheel assembly are animated at runtime.
-- Scene uses a continuously rendered WebGL canvas, directional and colored lighting, fog, and a ground plane.
-- Camera targets and shot distances are intentionally conservative to avoid clipping through the roof.
-
-## Limitations
-
-This model has no authored animation clips. Steering and wheel animation are implemented through named transforms, but the exact axis and physical fidelity should be checked visually on your hardware. Camera positions are calculated from the GLB's geometry orientation, not a browser screenshot; they may require creative tuning for final cinematography. If performance is poor on mobile, reduce canvas DPR in `src/Scene.tsx`.
-
-## Edit content
-
-Edit `src/App.tsx` for portfolio chapters, professional history and links; `src/styles.css` for colors and typography. Replace `public/Adhik_Chintalwar_Resume.pdf` after updating your resume.
-
-## Model rights
-
-Ensure the uploaded model's license permits redistribution and public website hosting; include any required attribution before deployment.
+## Important
+- This is layered 3D-style parallax, not a reconstructed facial rig or actual expression animation.
+- Portrait uses the user's supplied professional headshot, with the background removed automatically. Check the cutout edges in the browser.
+- The existing resume is retained; experience summaries are intentionally broad and should be refined later.
+- LinkedIn link is a placeholder until confirmed.
