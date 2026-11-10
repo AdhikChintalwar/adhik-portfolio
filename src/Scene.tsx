@@ -4,7 +4,7 @@ import { Suspense, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
 type Props = {progress: React.MutableRefObject<number>; reduced:boolean};
-const MODEL='/models/porsche-911-gt3-rs.glb';
+const MODEL=`${import.meta.env.BASE_URL}models/porsche-911-gt3-rs.glb`;
 const clamp=THREE.MathUtils.clamp;
 const smooth=(x:number)=>{const t=clamp(x,0,1);return t*t*(3-2*t)};
 const lerp=THREE.MathUtils.lerp;
