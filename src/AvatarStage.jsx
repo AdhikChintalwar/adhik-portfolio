@@ -19,16 +19,16 @@ const MIRROR = true;       // glossy reflecting floor; set to false on very slow
 //   fade / out: seconds to blend in / back to idle             say: caption shown while it plays
 // ---------------------------------------------------------------------------------------------------
 const ACTIONS = {
-  think:  { clip: 'think',  from: 0,   to: 16.4, shot: 'think' },
-  smoke:  { clip: 'smoke',  from: 0,   to: 6.6,  shot: 'smoke', fade: 0.6, out: 0.9 },   // hands to the face, then arms overhead (Scene 03)
+  box:    { clip: 'box',    from: 0,   to: 2.3,  shot: 'full' },
+  smoke:  { clip: 'smoke',  from: 0,   to: 6.6,  shot: 'smoke', fade: 0.6, out: 0.9 },   // hands to the face, then arms overhead (Scene 02)
   groove: { clip: 'move',   from: 0,   to: 1.75, shot: 'full' },
   pushup: { clip: 'pushup', from: 0,   to: 1.6,  shot: 'low', reps: 5, yaw: -1.15, fade: 0.8, out: 0.95 },
   dance:  { clip: 'dance',  from: 0,   to: 4.4,  shot: 'full', glasses: true, then: 'callme' },
   callme: { clip: 'move',   from: 1.55, to: 2.75, shot: 'call', glasses: true, hold: 1.8, fade: 0.55, say: 'Call me' },
 };
 // which animation plays when each section scrolls into view (home = idle)
-const SECTION_ACTION = { about: 'think', experience: 'smoke', projects: 'groove', skills: 'pushup', contact: 'dance' };
-const ROTATION = ['groove', 'smoke', 'dance', 'think', 'pushup'];   // what a click / tap on him plays
+const SECTION_ACTION = { about: 'smoke', experience: 'box', projects: 'groove', skills: 'pushup', contact: 'dance' };
+const ROTATION = ['groove', 'box', 'dance', 'smoke', 'pushup'];   // what a click / tap on him plays
 const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
 
 // Camera framings. y = look-at height, cy = camera height, d = distance, w = width that must fit.
@@ -36,7 +36,6 @@ const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'conta
 // Wide moves get a little more room on the left.
 const SHOTS = {
   hero:  { y: 0.88, cy: 1.16, d: 5.1, w: 1.6 },   // the whole studio: head to toe on the glossy floor, headroom for the speech bubble
-  think: { y: 1.02, cy: 1.26, d: 4.3, w: 1.25 },   // a little closer
   call:  { y: 1.24, cy: 1.34, d: 3.5, w: 1.25, ax: 0.42 },    // the call-me arm swings wide
   full:  { y: 0.92, cy: 1.22, d: 4.9, w: 1.7, ax: 0.4 },   // head to toe, room for big moves
   smoke: { y: 1.1,  cy: 1.3,  d: 5.5, w: 1.7, ax: 0.4 },    // head to toe with extra headroom: the arms go up over his head
@@ -446,7 +445,7 @@ export default function AvatarStage() {
         for (const key2 in P) P[key2] += (R[key2] - P[key2]) * (reduced ? 1 : 1 - Math.exp(-RATE[key2] * dt));
 
         // how much the cursor may steer him: fully when idle, a little during an action, never on the floor
-        const want = !curName ? 1 : curName === 'think' ? 0.5 : curName === 'pushup' ? 0 : 0.15;
+        const want = !curName ? 1 : curName === 'pushup' ? 0 : 0.15;
         lookW += (want - lookW) * (1 - Math.exp(-4 * dt));
 
         const calm = reduced ? 0 : 1;
