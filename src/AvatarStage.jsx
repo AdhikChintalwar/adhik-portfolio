@@ -7,12 +7,15 @@ const CENTER_LINES = ['Hey, it’s you!', 'Check out the portfolio'];
 
 // Tuning knobs. Distances in metres, angles in radians, relative to the avatar's head bone.
 const CFG = {
+  hideMeshes: [],       // extra meshes to hide by name fragment, e.g. ['hair_1']
+  hideGlasses: true,    // hides any mesh named *glasses* (handover: no sunglasses)
+  shirtColor: 0x14171a, // multiplies the clothing texture; set to null to keep the exported colours
   hold: 2400,           // ms a reaction is held before returning to work
   cooldown: 500,        // ms before the next reaction can start
   camDist: 1.05, camFov: 26, camLift: 0.03, targetDrop: 0.09,
   lidTop: -0.12, lidW: 0.36, lidH: 0.2, lidTilt: 0.2, laptopZ: 0.34,
   poses: {              // yaw: - looks screen-left, + screen-right; pitch: + looks down
-    idle:   { yaw: 0,     pitch: 0.15,  eyeX: 0,    eyeY: -0.55, smile: 0,   brow: 0 },
+    idle:   { yaw: 0,     pitch: 0.11,  eyeX: 0,    eyeY: -0.55, smile: 0,   brow: 0 },
     left:   { yaw: -0.42, pitch: 0.02,  eyeX: -0.6, eyeY: 0,     smile: 0,   brow: 0.1 },
     right:  { yaw: 0.42,  pitch: 0.02,  eyeX: 0.6,  eyeY: 0,     smile: 0,   brow: 0.1 },
     center: { yaw: 0,     pitch: -0.01, eyeX: 0,    eyeY: 0.08,  smile: 0.5, brow: 0.2 },
@@ -73,6 +76,19 @@ export default function AvatarStage() {
         if (o.isMesh) { o.frustumCulled = false; if (o.morphTargetDictionary) meshes.push(o); }
         if (o.isBone) bones[o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase()] = o;
       });
+      const aniso = renderer.capabilities.getMaxAnisotropy();
+      // optional look adjustments (no re-export needed)
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        const mats = [].concat(o.material || []);
+        const tag = `${o.name} ${mats.map((m) => m.name).join(' ')}`.toLowerCase();
+        if (CFG.hideGlasses && tag.includes('glasses')) o.visible = false;
+        if (CFG.hideMeshes.some((n) => tag.includes(n))) o.visible = false;
+        if (CFG.shirtColor != null && tag.includes('_look')) mats.forEach((m) => m.color && m.color.set(CFG.shirtColor));
+        // matte skin: exported skin is fully metallic, which reads as glare on the chin and nose
+        if (tag.includes('_body')) mats.forEach((m) => { m.metalness = 0; });
+        mats.forEach((m) => { for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) if (m[k]) m[k].anisotropy = aniso; });
+      });
       const spine = bones.spine2 || bones.spine1 || bones.spine;
       const neck = bones.neck, head = bones.head;
       const eyeL = bones.lefteye, eyeR = bones.righteye;
@@ -118,7 +134,7 @@ export default function AvatarStage() {
       desk.position.set(H.x, baseY - 0.9, H.z + 0.62);
       scene.add(lid, keys, desk);
 
-      const screen = new THREE.PointLight(0xcfe6ff, 0.3, 0, 2);
+      const screen = new THREE.PointLight(0xcfe6ff, 0.14, 0, 2);
       screen.position.set(H.x, H.y - 0.12, hingeZ - 0.12);
       const key = new THREE.DirectionalLight(0xd6fff0, 1.3);
       key.position.set(H.x - 1, H.y + 0.8, H.z + 1.4);
