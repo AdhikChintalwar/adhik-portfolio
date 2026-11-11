@@ -12,7 +12,7 @@ const CFG = {
   shirtColor: 0x14171a, // multiplies the clothing texture; set to null to keep the exported colours
   hold: 2400,           // ms a reaction is held before returning to work
   cooldown: 500,        // ms before the next reaction can start
-  camDist: 1.05, camFov: 26, camLift: 0.03, targetDrop: 0.09,
+  camDist: 1.45, camFov: 22, camLift: 0.03, targetDrop: 0.09,
   lidTop: -0.12, lidW: 0.36, lidH: 0.2, lidTilt: 0.2, laptopZ: 0.34,
   poses: {              // yaw: - looks screen-left, + screen-right; pitch: + looks down
     idle:   { yaw: 0,     pitch: 0.11,  eyeX: 0,    eyeY: -0.55, smile: 0,   brow: 0 },
@@ -43,19 +43,20 @@ export default function AvatarStage() {
       import('three/addons/libs/meshopt_decoder.module.js'),
       import('three/addons/environments/RoomEnvironment.js'),
       import('three/addons/geometries/RoundedBoxGeometry.js'),
-    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }, { RoundedBoxGeometry }]) => {
+      import('./gestures.js'),
+    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }, { RoundedBoxGeometry }, { createGestures }]) => {
       if (dead) return;
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
       loader.load(
         AVATAR_URL,
-        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry); },
+        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry, createGestures); },
         undefined,
         () => { if (!dead) setMissing(true); },
       );
     });
 
-    function run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry) {
+    function run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry, createGestures) {
       const V3 = THREE.Vector3, Q = THREE.Quaternion;
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
       renderer.setClearAlpha(0);
@@ -103,20 +104,10 @@ export default function AvatarStage() {
       console.info('[avatar] bones: head', !!head, 'neck', !!neck, 'eyes', !!eyeL,
         '| morphs: blink', hasBlink, 'smile', has('mouthSmileLeft') || has('mouthSmile'), 'eyeLook', hasEyeMorph);
 
-      // ---- pose the arms down and forward so the avatar is not left in a T-pose ----
-      const aim = (bone, child, dir) => {
-        if (!bone || !child) return;
-        bone.updateWorldMatrix(true, true);
-        const cur = child.getWorldPosition(new V3()).sub(bone.getWorldPosition(new V3())).normalize();
-        const dq = new Q().setFromUnitVectors(cur, dir.clone().normalize());
-        const nw = dq.multiply(bone.getWorldQuaternion(new Q()));
-        bone.quaternion.copy(bone.parent.getWorldQuaternion(new Q()).invert().multiply(nw));
-        bone.updateWorldMatrix(false, true);
-      };
-      [['left', 1], ['right', -1]].forEach(([side, s]) => {
-        aim(bones[`${side}arm`], bones[`${side}forearm`], new V3(s * 0.14, -1, 0.25));
-        aim(bones[`${side}forearm`], bones[`${side}hand`], new V3(-s * 0.05, -0.2, 1));
-      });
+      // ---- arms: rest pose + gestures (thumbs up, wave, ...) driven from src/gestures.js ----
+      // Created before anything is posed, because it reads the T-pose the file ships in.
+      const gest = createGestures(THREE, bones);
+      gest.snapIdle();
       root.updateMatrixWorld(true);
       const rest = new Map([spine, neck, head, eyeL, eyeR].filter(Boolean).map((b) => [b, b.quaternion.clone()]));
       const H = (head || root).getWorldPosition(new V3());
@@ -184,6 +175,37 @@ export default function AvatarStage() {
         say(z);
       };
 
+      // ---- scroll-triggered gestures ----
+      const SECTION_GESTURE = { about: 'wave', experience: 'nod', projects: 'thumbsUp', skills: 'peace', contact: 'pointAtYou' };
+      const ROTATION = ['thumbsUp', 'wave', 'clap', 'peace', 'pointAtYou', 'nod'];
+      const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
+      let section = 'home', scrolled = 0, lastY = window.scrollY, queued = null, rot = 0;
+      const play = (name) => {
+        if (reduced) return;
+        if (gest.busy) { queued = name; return; }
+        gest.trigger(name);
+      };
+      const sectionNow = () => {
+        const line = window.innerHeight * 0.45;
+        let cur = 'home';
+        for (const id of SECTION_IDS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= line) cur = id; }
+        return cur;
+      };
+      const onScroll = () => {
+        if (!visible) return;
+        const y = window.scrollY;
+        scrolled += Math.abs(y - lastY);
+        lastY = y;
+        const now = sectionNow();
+        if (now !== section) {
+          section = now; scrolled = 0;
+          if (SECTION_GESTURE[now]) play(SECTION_GESTURE[now]);
+        } else if (scrolled > 1100) {          // long section: keep him lively while the visitor keeps scrolling
+          scrolled = 0;
+          play(ROTATION[rot++ % ROTATION.length]);
+        }
+      };
+
       const _a = new Q(), _b = new Q(), _d = new Q(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
       // rotate a bone by a world-space pitch/yaw on top of its rest pose (rig-agnostic)
       const turn = (b, pitch, yaw) => {
@@ -202,6 +224,8 @@ export default function AvatarStage() {
         last = t;
         if (!visible || document.hidden) return;
         const sec = t / 1000;
+        const arm = gest.update(dt);
+        if (!gest.busy && queued) { const q = queued; queued = null; play(q); }
 
         if (react && t >= until) { react = null; Object.assign(T, CFG.poses.idle); cool = t + CFG.cooldown; lastZone = null; say(null); }
         for (const k in P) P[k] += (T[k] - P[k]) * (reduced ? 1 : 1 - Math.exp(-RATE[k] * dt));
@@ -214,7 +238,7 @@ export default function AvatarStage() {
         const breath = calm * Math.sin(sec * 1.3);
 
         spine && (turn(spine, breath * 0.01, 0));
-        const yaw = P.yaw + drift * working, pitch = P.pitch + calm * Math.sin(sec * 0.37) * 0.01;
+        const yaw = P.yaw + drift * working, pitch = P.pitch + calm * Math.sin(sec * 0.37) * 0.01 + arm.nod;
         turn(neck, pitch * 0.4, yaw * 0.4);
         turn(head, pitch * 0.6, yaw * 0.6);
         root.position.y = breath * 0.0012;
@@ -260,7 +284,7 @@ export default function AvatarStage() {
         request(z, performance.now());
       };
       const onLeave = () => { lastZone = null; if (react) until = Math.min(until, performance.now() + 500); };
-      const onTap = () => request('center', performance.now());
+      const onTap = () => { request('center', performance.now()); play(ROTATION[rot++ % ROTATION.length]); };
 
       const ro = new ResizeObserver(resize);
       ro.observe(wrap);
@@ -269,6 +293,7 @@ export default function AvatarStage() {
         if (visible && touch && !announced) {
           announced = true;
           timers.push(setTimeout(() => request('center', performance.now()), 1400));
+          timers.push(setTimeout(() => play('wave'), 3200));
         }
       });
       io.observe(wrap);
@@ -279,7 +304,9 @@ export default function AvatarStage() {
         window.addEventListener('blur', onLeave);
       }
       wrap.addEventListener('pointerdown', onTap);
+      window.addEventListener('scroll', onScroll, { passive: true });
       raf = requestAnimationFrame(tick);
+
 
       return () => {
         cancelAnimationFrame(raf);
@@ -288,6 +315,7 @@ export default function AvatarStage() {
         window.removeEventListener('pointermove', onMove);
         document.documentElement.removeEventListener('mouseleave', onLeave);
         window.removeEventListener('blur', onLeave);
+        window.removeEventListener('scroll', onScroll);
         wrap.removeEventListener('pointerdown', onTap);
         scene.traverse((o) => { o.geometry?.dispose?.(); [].concat(o.material || []).forEach((m) => m.dispose?.()); });
         pmrem.dispose();
