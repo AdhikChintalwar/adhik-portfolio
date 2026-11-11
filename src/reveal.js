@@ -1,12 +1,16 @@
-// Content blocks slide in horizontally from behind the avatar as they scroll into view.
+// Content rolls out of the film reel behind the avatar as it scrolls into view: each block starts edge-on at his position and
+// swings flat (a 3D unroll) while it travels left into the column.
 //  - the avatar stage is painted above the text, so the text really does come out from behind him
 //  - a block only starts once it has stayed in view for a moment, so flying past sections shows nothing
 //  - leaving the screen (either direction) re-arms the block, so it plays again when you come back
+//  - the big name is split into letters (data-letters): each letter flies out on its own, then cycles through colors
 //  - reduced-motion users get plain static content
+import { AVATAR_X } from './stageConfig.js';
+
 const SELECTORS = [
   '.hero > *',
-  '.sec > h2', '.sec > p', '.sec > .text-link',
-  '.sec .rows > li', '.sec .skills > li', '.sec .contact-links',
+  '.sec > h2', '.sec > h3', '.sec > p', '.sec > .text-link',
+  '.sec .rows > li', '.sec .skills > li', '.sec .contact-lines > li', '.sec .contact-links',
 ].join(',');
 const SETTLE = 110;        // ms a block must stay in view before it slides in
 const STAGGER = 70;        // ms between blocks that arrive together
@@ -17,20 +21,51 @@ export function startReveal() {
   if (!copy || matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return () => {};
   const stage = document.querySelector('.col-stage');
   const els = [...copy.querySelectorAll(SELECTORS)];
+  const isName = (el) => el.hasAttribute('data-letters');
   const live = new Set();                       // blocks currently on screen
   const timers = new Map();
   let gate = !!window.__avatarReady;            // the first screen waits for the avatar, so text comes out from behind a visible character
   let gateTimer = 0;
 
-  // how far to start from: the left edge of the text column to the middle of the avatar
+  // how far to start from: the left edge of the text column (or of each letter) to where the avatar stands
+  const letters = [...copy.querySelectorAll('[data-letters] .ch')];
+  const names = els.filter(isName);
+  // each word of the name is sized to fill the text column, whatever font is loaded: size = column width / width of the word (in em)
+  const WORD_MAX = [380, 220];
+  const fitNames = () => {
+    const cs = getComputedStyle(copy);
+    const avail = copy.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0');
+    names.forEach((h) => {
+      h.querySelectorAll('.w').forEach((w, i) => {
+        const width = w.getBoundingClientRect().width;
+        const fs = parseFloat(getComputedStyle(w).fontSize);
+        if (width > 0 && fs > 0) h.style.setProperty(`--fs${i + 1}`, `${Math.max(28, Math.min(WORD_MAX[i] || 240, (avail * 0.99 * fs) / width)).toFixed(1)}px`);
+      });
+    });
+  };
   const setShift = () => {
-    if (!stage || matchMedia('(max-width: 960px)').matches) { copy.style.removeProperty('--rv-x'); return; }
+    fitNames();
+    if (!stage || matchMedia('(max-width: 960px)').matches) {
+      els.forEach((el) => el.style.removeProperty('--rv-x'));
+      letters.forEach((l) => l.style.removeProperty('--lx'));
+      return;
+    }
     const s = stage.getBoundingClientRect(), c = copy.getBoundingClientRect();
-    const left = c.left + parseFloat(getComputedStyle(copy).paddingLeft || '0');
-    copy.style.setProperty('--rv-x', `${Math.round(s.left + s.width / 2 - left)}px`);
+    const target = s.left + s.width * AVATAR_X;
+    // every block starts with its left edge at the avatar, wherever it sits in the column. (Starting further right would put
+    // second-column items outside the screen, where the page clips them and the observer can no longer see them.)
+    // offsetLeft ignores transforms, so the numbers stay right while a block is still hidden behind him.
+    els.forEach((el) => { if (!isName(el)) el.style.setProperty('--rv-x', `${Math.round(target - (c.left + el.offsetLeft))}px`); });
+    // offsetLeft ignores transforms, so this is correct even while a letter is still hidden behind him
+    letters.forEach((l) => l.style.setProperty('--lx', `${Math.round(target - (c.left + l.offsetLeft))}px`));
   };
   setShift();
-  els.forEach((el) => el.classList.add('rv'));
+  const chroma = !!(window.CSS && CSS.registerProperty);   // animated letter colors need registered custom properties
+  els.forEach((el) => {
+    if (isName(el)) { el.classList.add('js'); if (chroma) el.classList.add('chroma'); }
+    else el.classList.add('rv');
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(setShift);   // web fonts change letter positions
 
   const show = (el, delay) => {
     if (!live.has(el)) return;
@@ -75,7 +110,7 @@ export function startReveal() {
     window.removeEventListener('avatar-ready', open);
     window.removeEventListener('resize', setShift);
     copy.removeEventListener('focusin', onFocus);
-    copy.style.removeProperty('--rv-x');
-    els.forEach((el) => { el.classList.remove('rv', 'in'); el.style.removeProperty('--rv-d'); });
+    letters.forEach((l) => l.style.removeProperty('--lx'));
+    els.forEach((el) => { el.style.removeProperty('--rv-x'); el.classList.remove('rv', 'in', 'js', 'chroma'); el.style.removeProperty('--rv-d'); });
   };
 }

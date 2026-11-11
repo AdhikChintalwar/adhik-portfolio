@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AVATAR_X } from './stageConfig.js';
 
 const BASE = import.meta.env.BASE_URL;
 const AVATAR_URL = `${BASE}avatar/avatar.glb`;
 const LINES = { left: 'Anyone here on the left?', right: 'Anyone here on the right?' };
 const CENTER_LINES = ['Hey, it’s you!', 'Check out the portfolio'];
 const FPS = 30;
+const MIRROR = true;       // glossy reflecting floor; set to false on very slow machines (the floor then keeps only his soft shadow and ring)
 
 // ---------------------------------------------------------------------------------------------------
 // The avatar file carries six animations (from your Avaturn exports). Each is short, so a "scene" plays
@@ -22,7 +24,7 @@ const ACTIONS = {
   groove: { clip: 'move',   from: 0,   to: 1.75, shot: 'full' },
   pushup: { clip: 'pushup', from: 0,   to: 1.6,  shot: 'low', reps: 5, yaw: -1.15, fade: 0.8, out: 0.95 },
   dance:  { clip: 'dance',  from: 0,   to: 4.4,  shot: 'full', glasses: true, then: 'callme' },
-  callme: { clip: 'move',   from: 1.55, to: 2.75, shot: 'hero', glasses: true, hold: 1.8, fade: 0.55, say: 'Call me' },
+  callme: { clip: 'move',   from: 1.55, to: 2.75, shot: 'call', glasses: true, hold: 1.8, fade: 0.55, say: 'Call me' },
 };
 // which animation plays when each section scrolls into view (home = idle)
 const SECTION_ACTION = { about: 'think', experience: 'box', projects: 'groove', skills: 'pushup', contact: 'dance' };
@@ -30,11 +32,45 @@ const ROTATION = ['groove', 'box', 'dance', 'think', 'pushup'];   // what a clic
 const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
 
 // Camera framings. y = look-at height, cy = camera height, d = distance, w = width that must fit.
+// ax = where he stands across the stage (0 = left edge, 1 = right edge); the default is AVATAR_X (stageConfig.js), the spot the text rolls out from.
+// Wide moves get a little more room on the left.
 const SHOTS = {
-  hero:  { y: 1.3,  cy: 1.38, d: 3.6, w: 1.05 },    // hips up, face readable, headroom for the speech bubble
-  think: { y: 1.28, cy: 1.38, d: 3.6, w: 1.15 },
-  full:  { y: 0.95, cy: 1.3,  d: 4.8, w: 1.7 },     // head to toe, room for big moves
-  low:   { y: 0.3,  cy: 1.15, d: 5.0, w: 2.15 },    // push-ups along the floor
+  hero:  { y: 0.88, cy: 1.16, d: 5.1, w: 1.6 },   // the whole studio: head to toe on the glossy floor, headroom for the speech bubble
+  think: { y: 1.02, cy: 1.26, d: 4.3, w: 1.25 },   // a little closer
+  call:  { y: 1.24, cy: 1.34, d: 3.5, w: 1.25, ax: 0.42 },    // the call-me arm swings wide
+  full:  { y: 0.92, cy: 1.22, d: 4.9, w: 1.7, ax: 0.4 },   // head to toe, room for big moves
+  low:   { y: 0.3,  cy: 1.15, d: 5.0, w: 2.15, ax: 0.5 },   // push-ups along the floor
+};
+
+// The glossy floor: a mirror whose reflection is see-through (alpha comes from the reflected avatar), fades out the
+// farther it gets from his feet and toward the sides, and is tinted a little, so it reads as polished black stone.
+const SOFT_MIRROR = {
+  name: 'SoftMirror',
+  uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, strength: { value: 0.5 } },
+  vertexShader: /* glsl */`
+    uniform mat4 textureMatrix;
+    varying vec4 vUv;
+    varying vec3 vW;
+    void main() {
+      vUv = textureMatrix * vec4( position, 1.0 );
+      vW = ( modelMatrix * vec4( position, 1.0 ) ).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }`,
+  fragmentShader: /* glsl */`
+    uniform vec3 color;
+    uniform float strength;
+    uniform sampler2D tDiffuse;
+    varying vec4 vUv;
+    varying vec3 vW;
+    void main() {
+      vec4 base = texture2DProj( tDiffuse, vUv );
+      float fade = exp( -max( vW.z, 0.0 ) * 0.55 );
+      float side = 1.0 - smoothstep( 1.6, 3.4, abs( vW.x ) );
+      float a = base.a * strength * fade * side;
+      gl_FragColor = vec4( base.rgb / max( base.a, 0.001 ) * color, a );
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
 };
 
 const CFG = {
@@ -73,19 +109,20 @@ export default function AvatarStage() {
       import('three/addons/loaders/GLTFLoader.js'),
       import('three/addons/libs/meshopt_decoder.module.js'),
       import('three/addons/environments/RoomEnvironment.js'),
-    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }]) => {
+      import('three/addons/objects/Reflector.js'),
+    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }, { Reflector }]) => {
       if (dead) return;
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
       loader.load(
         AVATAR_URL,
-        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment); },
+        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment, Reflector); },
         undefined,
         () => { if (!dead) setMissing(true); },
       );
     });
 
-    function run(THREE, gltf, RoomEnvironment) {
+    function run(THREE, gltf, RoomEnvironment, Reflector) {
       const V3 = THREE.Vector3, Q = THREE.Quaternion;
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
       renderer.setClearAlpha(0);
@@ -232,11 +269,16 @@ export default function AvatarStage() {
       // ---- lights, floor, camera ----
       const key = new THREE.DirectionalLight(0xe6fff4, 1.25);
       key.position.set(-1.4, 2.6, 2.8);
-      const redRim = new THREE.DirectionalLight(0xff4d5e, 2.6);
+      const redRim = new THREE.DirectionalLight(0xff4a45, 3.0);
       redRim.position.set(2.4, 1.6, -1.8);
-      const greenRim = new THREE.DirectionalLight(0x2fd39a, 1.7);
+      const greenRim = new THREE.DirectionalLight(0x2fbf8a, 1.5);
       greenRim.position.set(-2.4, 1.8, -1.6);
       scene.add(key, redRim, greenRim);
+      // rim lights follow the section palette (palette.js): c1 is the green-side rim, c2 the crimson-side rim
+      const tintA = new THREE.Color(0x2fbf8a), tintB = new THREE.Color(0xff4a45);
+      const onPalette = (e) => { try { tintA.set(e.detail.c1); tintB.set(e.detail.c2); } catch { /* keep the old colors */ } };
+      if (window.__palette) onPalette({ detail: window.__palette });
+      window.addEventListener('palette', onPalette);
 
       // soft contact shadow + faint green ring under his feet
       const c2 = document.createElement('canvas');
@@ -246,7 +288,7 @@ export default function AvatarStage() {
       gr.addColorStop(0, 'rgba(0,0,0,0.62)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
       g2.fillStyle = gr; g2.fillRect(0, 0, 256, 256);
       gr = g2.createRadialGradient(128, 128, 96, 128, 128, 124);
-      gr.addColorStop(0, 'rgba(47,211,154,0)'); gr.addColorStop(0.5, 'rgba(47,211,154,0.24)'); gr.addColorStop(1, 'rgba(47,211,154,0)');
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.26)'); gr.addColorStop(1, 'rgba(255,255,255,0)');   // white: tinted by the palette below
       g2.fillStyle = gr; g2.fillRect(0, 0, 256, 256);
       const floorTex = new THREE.CanvasTexture(c2);
       const floor = new THREE.Mesh(
@@ -255,20 +297,40 @@ export default function AvatarStage() {
       );
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = 0.003;
+      floor.renderOrder = 2;                          // drawn after the mirror, so his shadow sits on top of the reflection
       rig.add(floor);
 
+      // glossy studio floor: a transparent mirror under him
+      let mirror = null;
+      if (MIRROR) {
+        mirror = new Reflector(new THREE.PlaneGeometry(8, 8), {
+          shader: SOFT_MIRROR, color: 0xffffff, textureWidth: 768, textureHeight: 768, clipBias: 0.003, multisample: 2,
+        });
+        mirror.rotation.x = -Math.PI / 2;
+        mirror.material.transparent = true;
+        mirror.material.depthWrite = false;
+        mirror.renderOrder = 1;
+        scene.add(mirror);
+      }
+
       const camera = new THREE.PerspectiveCamera(CFG.fov, 1, 0.1, 30);
-      const cam = { y: SHOTS.hero.y, cy: SHOTS.hero.cy, d: SHOTS.hero.d };
+      const cam = { y: SHOTS.hero.y, cy: SHOTS.hero.cy, d: SHOTS.hero.d, x: 0 };
       const cam1 = { ...cam };                       // first stage of a two-stage follow (gives the move a soft start)
       let yaw1 = 0, aspect = 1;
+      const fv = new V3();
+      let floorPx = -1;
+      const narrow = matchMedia('(max-width: 960px)');   // on tablets and phones the stage is full width and he stands in the middle
       const shotTarget = () => {
         const s = SHOTS[T.shot];
-        const need = (s.w / 2) / (Math.tan((CFG.fov * Math.PI) / 360) * aspect);     // keep the width in frame on narrow stages
-        return { y: s.y, cy: s.cy, d: Math.min(9, Math.max(s.d, need)) };
+        const th = Math.tan((CFG.fov * Math.PI) / 360);
+        const d = Math.min(9, Math.max(s.d, (s.w / 2) / (th * aspect)));   // keep the width in frame on narrow stages
+        const ax = narrow.matches ? 0.5 : (s.ax ?? AVATAR_X);
+        return { y: s.y, cy: s.cy, d, x: -(2 * ax - 1) * d * th * aspect };   // slide the camera so his feet land at ax across the stage
       };
       const resize = () => {
         const w = wrap.clientWidth || 1, h = wrap.clientHeight || 1;
         aspect = w / h;
+        wrap.parentElement.style.setProperty('--ax', `${(narrow.matches ? 0.5 : AVATAR_X) * 100}%`);   // the CSS beam and reel center on him
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
         renderer.setSize(w, h, false);
         camera.aspect = aspect;
@@ -353,6 +415,10 @@ export default function AvatarStage() {
         mixer.update(dt);
         sequence();
 
+        // rim lights and floor ring blend toward the current palette
+        const kc = reduced ? 1 : 1 - Math.exp(-2.2 * dt);
+        greenRim.color.lerp(tintA, kc); redRim.color.lerp(tintB, kc); floor.material.color.copy(redRim.color);
+
         // sunglasses fade in and out instead of popping
         gA += (gT - gA) * (1 - Math.exp(-9 * dt));
         if (Math.abs(gT - gA) < 0.01) gA = gT;
@@ -365,10 +431,15 @@ export default function AvatarStage() {
         const st = shotTarget();
         yaw1 += (T.rigYaw - yaw1) * k;
         rig.rotation.y += (yaw1 - rig.rotation.y) * k;
-        for (const f of ['y', 'cy', 'd']) { cam1[f] += (st[f] - cam1[f]) * k; cam[f] += (cam1[f] - cam[f]) * k; }
+        for (const f of ['y', 'cy', 'd', 'x']) { cam1[f] += (st[f] - cam1[f]) * k; cam[f] += (cam1[f] - cam[f]) * k; }
         camX += (camXt - camX) * (1 - Math.exp(-3 * dt));
-        camera.position.set(camX * 0.6, cam.cy, cam.d);
-        camera.lookAt(camX * 0.25, cam.y, 0);
+        camera.position.set(cam.x + camX * 0.6, cam.cy, cam.d);
+        camera.lookAt(cam.x + camX * 0.25, cam.y, 0);
+        // tell the CSS studio where his feet are on screen, so the floor gradient lines up with the 3D floor
+        camera.updateMatrixWorld();
+        fv.set(0, 0, 0).project(camera);
+        const fpx = Math.round(wrap.offsetTop + ((1 - fv.y) / 2) * wrap.clientHeight);
+        if (fpx !== floorPx) { floorPx = fpx; wrap.parentElement.style.setProperty('--floor', `${fpx}px`); }
 
         if (react && t >= until) { react = null; Object.assign(R, CFG.poses.idle); cool = t + CFG.cooldown; lastZone = null; say(null); }
         for (const key2 in P) P[key2] += (R[key2] - P[key2]) * (reduced ? 1 : 1 - Math.exp(-RATE[key2] * dt));
@@ -463,10 +534,12 @@ export default function AvatarStage() {
         document.documentElement.removeEventListener('mouseleave', onLeave);
         window.removeEventListener('blur', onLeave);
         window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('palette', onPalette);
         wrap.removeEventListener('pointerdown', onTap);
         mixer.stopAllAction();
         scene.traverse((o) => { o.geometry?.dispose?.(); [].concat(o.material || []).forEach((m) => m.dispose?.()); });
         floorTex.dispose();
+        if (mirror) mirror.getRenderTarget().dispose();
         pmrem.dispose();
         renderer.dispose();
         renderer.domElement.remove();
