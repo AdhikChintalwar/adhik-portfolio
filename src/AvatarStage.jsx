@@ -13,13 +13,16 @@ const FPS = 30;
 //   reps   : how many times to loop (omit to play once)
 //   shot   : camera framing (see SHOTS)            yaw     : turns his whole body (radians)
 //   glasses: sunglasses on while it plays
+//   then   : another animation that follows straight away      hold: seconds to stay in the last pose
+//   fade / out: seconds to blend in / back to idle             say: caption shown while it plays
 // ---------------------------------------------------------------------------------------------------
 const ACTIONS = {
-  think:  { clip: 'think',  from: 0, to: 16.4, shot: 'think' },
-  box:    { clip: 'box',    from: 0, to: 2.3,  shot: 'full' },
-  groove: { clip: 'move',   from: 0, to: 3.9,  shot: 'full' },
-  pushup: { clip: 'pushup', from: 0, to: 1.6,  shot: 'low', reps: 5, yaw: -1.15 },
-  dance:  { clip: 'dance',  from: 0, to: 4.5,  shot: 'full', glasses: true },
+  think:  { clip: 'think',  from: 0,   to: 16.4, shot: 'think' },
+  box:    { clip: 'box',    from: 0,   to: 2.3,  shot: 'full' },
+  groove: { clip: 'move',   from: 0,   to: 1.75, shot: 'full' },
+  pushup: { clip: 'pushup', from: 0,   to: 1.6,  shot: 'low', reps: 5, yaw: -1.15, fade: 0.8, out: 0.95 },
+  dance:  { clip: 'dance',  from: 0,   to: 4.4,  shot: 'full', glasses: true, then: 'callme' },
+  callme: { clip: 'move',   from: 1.55, to: 2.75, shot: 'hero', glasses: true, hold: 1.8, fade: 0.55, say: 'Call me' },
 };
 // which animation plays when each section scrolls into view (home = idle)
 const SECTION_ACTION = { about: 'think', experience: 'box', projects: 'groove', skills: 'pushup', contact: 'dance' };
@@ -36,7 +39,10 @@ const SHOTS = {
 
 const CFG = {
   fov: 24,
-  fade: 0.45,           // seconds of cross-fade between animations
+  fade: 0.5,            // seconds of cross-fade into an animation
+  fadeOut: 0.7,         // ... and back to idle
+  settle: 320,          // ms a section must stay in view before its animation starts (fast scrolling skips the rest)
+  dwell: 900,           // ms an animation always plays before the next one may take over
   hold: 2400,           // ms a cursor reaction is held before returning
   cooldown: 500,        // ms before the next cursor reaction can start
   poses: {              // head glance for the cursor zones. yaw: - looks screen-left, + screen-right
@@ -99,6 +105,7 @@ export default function AvatarStage() {
       const bones = {};
       const meshes = [];
       const glasses = [];
+      const glassMats = [];
       const aniso = renderer.capabilities.getMaxAnisotropy();
       root.traverse((o) => {
         if (o.isBone) bones[o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase()] = o;
@@ -107,7 +114,10 @@ export default function AvatarStage() {
         if (o.morphTargetDictionary) meshes.push(o);
         const mats = [].concat(o.material || []);
         const tag = `${o.name} ${mats.map((m) => m.name).join(' ')}`.toLowerCase();
-        if (tag.includes('glasses')) { o.visible = false; glasses.push(o); }
+        if (tag.includes('glasses')) {
+          o.visible = false; glasses.push(o);
+          mats.forEach((m) => { glassMats.push([m, m.opacity]); m.transparent = true; m.needsUpdate = true; });
+        }
         mats.forEach((m) => { for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) if (m[k]) m[k].anisotropy = aniso; });
       });
       const spine = bones.spine2 || bones.spine1 || bones.spine;
@@ -141,34 +151,83 @@ export default function AvatarStage() {
         else { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; }
         acts[k] = act;
       }
-      idle.play();
+      const nameOf = new Map([[idle, 'idle']]);
+      for (const [k, act] of Object.entries(acts)) nameOf.set(act, k);
+
+      // Blending is done here instead of with three's fadeIn/fadeOut: those restart an interrupted fade from
+      // full weight, which made him jump whenever a scroll cut one animation short. Here the weights of all
+      // live animations always add up to exactly 1, so a blend can be interrupted at any moment.
+      idle.play(); idle.setEffectiveWeight(1);
       let cur = idle, curName = null, loops = 0;
+      let clock = 0;                                    // animation clock (ms); only moves while frames are drawn
+      let startedAt = 0, holdUntil = 0, pending = null, finishedAct = null, settleAt = 0, settleFor = null;
+      let fadeP = 1, fadeDur = CFG.fade;
+      const wt = new Map([[idle, 1]]);                  // weight of every live animation right now
+      let from = new Map(wt);                           // ... and when the current blend began
       if (reduced) { idle.time = 3; mixer.update(0); mixer.timeScale = 0; }
 
-      const T = { rigYaw: 0, shot: 'hero' };      // targets for body yaw and camera
+      const T = { rigYaw: 0, shot: 'hero' };            // targets for body yaw and camera
+      let gT = 0, gA = 0;                               // sunglasses opacity: target / current
+
+      const begin = (act, dur) => {
+        from = new Map(wt);
+        if (!from.has(act)) { from.set(act, 0); wt.set(act, 0); }
+        act.reset().play();
+        act.setEffectiveWeight(wt.get(act));
+        fadeP = 0; fadeDur = Math.max(0.05, dur);
+      };
+      const blend = (dt) => {
+        if (fadeP < 1) fadeP = Math.min(1, fadeP + dt / fadeDur);
+        const e = fadeP * fadeP * (3 - 2 * fadeP);       // ease in and out
+        const base = from.get(cur) || 0;
+        for (const [act, f] of from) {
+          const w = act === cur ? base + (1 - base) * e : f * (1 - e);
+          wt.set(act, w);
+          act.setEffectiveWeight(w);
+        }
+        if (fadeP >= 1) for (const act of [...from.keys()]) if (act !== cur) { act.stop(); from.delete(act); wt.delete(act); }
+      };
+
       const goIdle = () => {
         if (cur === idle) return;
-        idle.reset().play();
-        cur.crossFadeTo(idle, CFG.fade + 0.15, false);
-        cur = idle; curName = null; loops = 0;
-        T.rigYaw = 0; T.shot = 'hero';
-        glasses.forEach((g) => { g.visible = false; });
+        const a = ACTIONS[curName];
+        begin(idle, (a && a.out) || CFG.fadeOut);
+        cur = idle; curName = null; loops = 0; holdUntil = 0; startedAt = clock; finishedAct = null;
+        T.rigYaw = 0; T.shot = 'hero'; gT = 0;
+        say(null);
       };
       const play = (name) => {
         const a = ACTIONS[name], act = acts[name];
         if (reduced || !a || !act || curName === name) return;
-        act.reset().play();
-        cur.crossFadeTo(act, CFG.fade, false);
-        cur = act; curName = name; loops = 0;
-        T.rigYaw = a.yaw || 0; T.shot = a.shot;
-        glasses.forEach((g) => { g.visible = !!a.glasses; });
+        begin(act, a.fade || CFG.fade);
+        cur = act; curName = name; loops = 0; holdUntil = 0; startedAt = clock; pending = null; finishedAct = null;
+        T.rigYaw = a.yaw || 0; T.shot = a.shot; gT = a.glasses ? 1 : 0;
         say(null);
+        if (a.say) setCue({ zone: 'center', text: a.say, show: true });
       };
-      mixer.addEventListener('finished', (e) => { if (e.action === cur) goIdle(); });
+      // scroll asks for an animation (or idle): it starts at once if the current one has had its moment, otherwise it waits
+      const ask = (name) => {
+        if (!curName || clock - startedAt >= CFG.dwell) return name ? play(name) : goIdle();
+        pending = { name };
+      };
+      mixer.addEventListener('finished', (e) => { if (e.action === cur) finishedAct = e.action; });
       mixer.addEventListener('loop', (e) => {
         const a = ACTIONS[curName];
-        if (e.action === cur && a && a.reps && ++loops >= a.reps) goIdle();
+        if (e.action === cur && a && a.reps && ++loops >= a.reps) finishedAct = e.action;
       });
+      // everything that reacts to those events runs after mixer.update, never inside it
+      const sequence = () => {
+        if (settleAt && clock >= settleAt) { settleAt = 0; ask(settleFor); }
+        if (pending && clock - startedAt >= CFG.dwell) { const n = pending.name; pending = null; if (n) play(n); else goIdle(); }
+        if (finishedAct && finishedAct === cur) {
+          finishedAct = null;
+          const a = ACTIONS[curName];
+          if (a && a.then) play(a.then);
+          else if (a && a.hold) holdUntil = clock + a.hold * 1000;
+          else goIdle();
+        }
+        if (holdUntil && clock >= holdUntil) { holdUntil = 0; goIdle(); }
+      };
 
       // ---- lights, floor, camera ----
       const key = new THREE.DirectionalLight(0xe6fff4, 1.25);
@@ -200,7 +259,8 @@ export default function AvatarStage() {
 
       const camera = new THREE.PerspectiveCamera(CFG.fov, 1, 0.1, 30);
       const cam = { y: SHOTS.hero.y, cy: SHOTS.hero.cy, d: SHOTS.hero.d };
-      let aspect = 1;
+      const cam1 = { ...cam };                       // first stage of a two-stage follow (gives the move a soft start)
+      let yaw1 = 0, aspect = 1;
       const shotTarget = () => {
         const s = SHOTS[T.shot];
         const need = (s.w / 2) / (Math.tan((CFG.fov * Math.PI) / 360) * aspect);     // keep the width in frame on narrow stages
@@ -213,7 +273,7 @@ export default function AvatarStage() {
         renderer.setSize(w, h, false);
         camera.aspect = aspect;
         camera.updateProjectionMatrix();
-        const t = shotTarget(); Object.assign(cam, t);
+        const t = shotTarget(); Object.assign(cam, t); Object.assign(cam1, t);
       };
 
       // ---- cursor reactions (head, eyes, face) ----
@@ -255,13 +315,15 @@ export default function AvatarStage() {
         const y = window.scrollY;
         scrolled += Math.abs(y - lastY);
         lastY = y;
-        const now = sectionNow();
-        if (now !== section) {
-          section = now; scrolled = 0;
-          if (SECTION_ACTION[now]) play(SECTION_ACTION[now]); else goIdle();
-        } else if (scrolled > 1400 && !curName && SECTION_ACTION[now]) {   // long section: do it again if they keep scrolling
+        const sec = sectionNow();
+        if (sec !== section) {
+          // note the new section, but only start its animation once the scroll has settled there
+          section = sec; scrolled = 0;
+          settleFor = SECTION_ACTION[sec] || null;
+          settleAt = clock + CFG.settle;
+        } else if (scrolled > 1400 && !curName && SECTION_ACTION[sec]) {   // long section: do it again if they keep scrolling
           scrolled = 0;
-          play(SECTION_ACTION[now]);
+          play(SECTION_ACTION[sec]);
         }
       };
 
@@ -284,19 +346,26 @@ export default function AvatarStage() {
         b.updateWorldMatrix(false, false);
       };
 
-      const tick = (t) => {
-        raf = requestAnimationFrame(tick);
-        const dt = Math.min(0.05, (t - last) / 1000);
-        last = t;
-        if (!visible || document.hidden) return;
+      const update = (dt, t) => {
         const sec = t / 1000;
+        clock += dt * 1000;
+        blend(dt);
         mixer.update(dt);
+        sequence();
 
-        // body yaw (push-ups) and camera
-        const k = reduced ? 1 : 1 - Math.exp(-2.6 * dt);
-        rig.rotation.y += (T.rigYaw - rig.rotation.y) * k;
+        // sunglasses fade in and out instead of popping
+        gA += (gT - gA) * (1 - Math.exp(-9 * dt));
+        if (Math.abs(gT - gA) < 0.01) gA = gT;
+        const gOn = gA > 0.01;
+        glasses.forEach((g) => { g.visible = gOn; });
+        for (const [m, o] of glassMats) m.opacity = o * gA;
+
+        // body yaw (push-ups) and camera: two cascaded smoothers, so they ease in as well as out
+        const k = reduced ? 1 : 1 - Math.exp(-4 * dt);
         const st = shotTarget();
-        cam.y += (st.y - cam.y) * k; cam.cy += (st.cy - cam.cy) * k; cam.d += (st.d - cam.d) * k;
+        yaw1 += (T.rigYaw - yaw1) * k;
+        rig.rotation.y += (yaw1 - rig.rotation.y) * k;
+        for (const f of ['y', 'cy', 'd']) { cam1[f] += (st[f] - cam1[f]) * k; cam[f] += (cam1[f] - cam[f]) * k; }
         camX += (camXt - camX) * (1 - Math.exp(-3 * dt));
         camera.position.set(camX * 0.6, cam.cy, cam.d);
         camera.lookAt(camX * 0.25, cam.y, 0);
@@ -341,9 +410,15 @@ export default function AvatarStage() {
         addMorph('mouthSmileLeft', sm); addMorph('mouthSmileRight', sm);
         addMorph('cheekSquintLeft', sm * 0.4); addMorph('cheekSquintRight', sm * 0.4);
         addMorph('browInnerUp', P.brow * lookW);
-
+      };
+      const tick = (t) => {
+        raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (t - last) / 1000);
+        last = t;
+        if (!visible || document.hidden) return;
+        update(dt, t);
         renderer.render(scene, camera);
-        if (!ready_) { ready_ = true; setReady(true); }
+        if (!ready_) { ready_ = true; setReady(true); window.__avatarReady = true; window.dispatchEvent(new Event('avatar-ready')); }
       };
 
       const onMove = (e) => {

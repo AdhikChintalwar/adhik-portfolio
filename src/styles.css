@@ -94,6 +94,13 @@ h1 { font: 700 clamp(44px, 5.6vw, 88px)/0.98 var(--head); letter-spacing: -0.03e
 .note { margin-top: 24px; font-size: 13px; color: var(--muted) !important; }
 footer { padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 
+/* Text slides out from behind the avatar (reveal.js adds .rv / .in). The stage is painted above the copy. */
+.site { overflow-x: clip; }
+.col-copy { position: relative; z-index: 1; }
+.col-stage { z-index: 3; }
+.rv { opacity: 0; transform: translate3d(var(--rv-x, 40vw), 0, 0); transition: transform 0.5s cubic-bezier(0.5, 0, 0.9, 0.4), opacity 0.25s ease; will-change: transform, opacity; }
+.rv.in { opacity: 1; transform: none; transition: transform 1.05s cubic-bezier(0.16, 0.84, 0.24, 1) var(--rv-d, 0ms), opacity 0.22s ease var(--rv-d, 0ms); }
+
 /* Tablet and mobile: character on top, large and centered; left/right zones are off */
 @media (max-width: 960px) {
   .split { grid-template-columns: minmax(0, 1fr); }
@@ -118,4 +125,5 @@ footer { padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--m
   html { scroll-behavior: auto; }
   .cursor { animation: none; }
   .frame, .bubble { transition: none; }
+  .rv, .rv.in { transition: none; opacity: 1; transform: none; }
 }

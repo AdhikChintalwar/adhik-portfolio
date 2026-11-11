@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import {
   ArrowUpRight, ArrowDown, Github, Linkedin, Download,
   Code2, BrainCircuit, Cloud, Database, Menu, X,
 } from 'lucide-react';
 import AvatarStage from './AvatarStage.jsx';
+import { startReveal } from './reveal.js';
 
 const BASE = import.meta.env.BASE_URL;
 const RESUME = BASE + 'Adhik_Chintalwar_Resume.pdf';
@@ -30,6 +31,7 @@ const projects = [
 
 export default function App() {
   const [menu, setMenu] = useState(false);
+  useLayoutEffect(() => startReveal(), []);     // text slides out from behind the avatar (see reveal.js)
   return (
     <div className="site">
       <header className="topbar">
