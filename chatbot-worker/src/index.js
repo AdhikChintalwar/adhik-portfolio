@@ -1,5 +1,5 @@
 // Private chat assistant for Adhik's portfolio.
-//  - Your OpenAI key lives here (a Cloudflare secret). The website never sees it, so visitors cannot copy it.
+//  - Your OpenAI key lives here (a Cloudflare secret named PORTFOLIO_CHAT_API). The website never sees it, so visitors cannot copy it.
 //  - Nothing is logged or sent to you: a question goes browser -> this Worker -> OpenAI -> back.
 //  - It answers only from knowledge.txt (your resume and the extra details you add).
 import KNOWLEDGE from '../knowledge.txt';
@@ -29,10 +29,14 @@ ${facts}`;
 const json = (obj, status, headers) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 
+// Browsers only: your site, anything on this computer (localhost, any port) and your home network (so a phone can test npm run dev).
+// CORS never protects the key from other programs; the key stays on this Worker and the rate limit and size caps do that work.
+const LOCAL_DEV = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|[a-z0-9-]+\.local)(:\d{1,5})?$/i;
+
 function corsHeaders(request, env) {
   const origin = request.headers.get('Origin') || '';
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  return allowed.includes(origin)
+  return allowed.includes(origin) || LOCAL_DEV.test(origin)
     ? { 'access-control-allow-origin': origin, 'access-control-allow-methods': 'POST, GET, OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400', vary: 'Origin' }
     : null;
 }
@@ -57,7 +61,7 @@ async function openai(env, path, init) {
     return await fetch(`${(env.OPENAI_BASE || 'https://api.openai.com/v1').replace(/\/$/, '')}${path}`, {
       ...init,
       signal: ctl.signal,
-      headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' },
+      headers: { authorization: `Bearer ${env.PORTFOLIO_CHAT_API}`, 'content-type': 'application/json' },
     });
   } finally {
     clearTimeout(timer);
@@ -102,22 +106,43 @@ async function chat(request, env, cors) {
   return json({ reply }, 200, cors);
 }
 
-// GET /health: checks that the key works and the model exists (used by deploy.sh). It never returns anything secret.
+// Turns an OpenAI error into a plain sentence for the person setting this up. Only safe parts are used: OpenAI's 401 text contains a
+// hint of the key, so it is never echoed; the other messages are short and contain no secrets.
+function explain(status, text, env) {
+  let err = {};
+  try { err = JSON.parse(text).error || {}; } catch { /* not JSON */ }
+  const code = String(err.code || err.type || '');
+  const msg = String(err.message || '');
+  const scopes = (msg.match(/missing scopes?:\s*([\w.,\s-]+?)(?:\.(?=\s|$)|$)/i) || [])[1];
+  if (code === 'insufficient_permissions' || /insufficient permissions|missing scope/i.test(msg)) {
+    return `The key is real, but OpenAI says it is restricted${scopes ? ` (missing: ${scopes.trim()})` : ''}. Create a new key with Permissions set to "All", then run: npx wrangler secret put PORTFOLIO_CHAT_API`;
+  }
+  if (status === 401 || code === 'invalid_api_key') {
+    const k = env.PORTFOLIO_CHAT_API || '';
+    return `OpenAI says the key is invalid. The key stored here is ${k.length} characters and ${k.startsWith('sk-') ? 'starts with "sk-"' : 'does NOT start with "sk-"'}. Create a new key, copy it with the copy button, and run: npx wrangler secret put PORTFOLIO_CHAT_API`;
+  }
+  if (code === 'insufficient_quota') return 'The OpenAI account is out of credit. Add credit in the OpenAI billing page.';
+  if (status === 404 || code === 'model_not_found') return `OpenAI does not know the model "${env.OPENAI_MODEL}" for this key. Change OPENAI_MODEL in wrangler.toml and run: npm run deploy`;
+  if (status === 429) return 'OpenAI is rate limiting this key right now. Try again in a minute.';
+  return `OpenAI answered with status ${status}${code ? ` (${code})` : ''}${status === 400 && msg ? `: ${msg.slice(0, 200).replace(/\.$/, '')}` : ''}.`;
+}
+
+// GET /health: sends one tiny real question, the same kind a visitor's question is, so "ok" means the chat will really work (used by deploy.sh).
+// It never returns anything secret.
 async function health(request, env, cors) {
-  if (!env.OPENAI_API_KEY) return json({ ok: false, problem: 'The OpenAI key is not set on the Worker yet.' }, 200, cors);
+  if (!env.PORTFOLIO_CHAT_API) return json({ ok: false, problem: 'The OpenAI key is not set on the Worker yet.' }, 200, cors);
   if (env.LIMITER) {
     const { success } = await env.LIMITER.limit({ key: 'health:' + (request.headers.get('CF-Connecting-IP') || 'unknown') });
     if (!success) return json({ ok: false, problem: 'Too many checks, try again in a minute.' }, 429, cors);
   }
+  const payload = { model: env.OPENAI_MODEL || 'gpt-6-luna', max_completion_tokens: 64, messages: [{ role: 'user', content: 'Reply with the single word: ok' }] };
+  if (env.OPENAI_REASONING) payload.reasoning_effort = env.OPENAI_REASONING;
   try {
-    const res = await openai(env, `/models/${encodeURIComponent(env.OPENAI_MODEL || 'gpt-6-luna')}`, { method: 'GET' });
-    if (res.ok) return json({ ok: true, model: env.OPENAI_MODEL, knowledgeChars: facts.length }, 200, cors);
-    console.error('health: openai answered', res.status, (await res.text()).slice(0, 300));
-    const problem = res.status === 401 ? 'OpenAI rejected the key (check that it was copied completely).'
-      : res.status === 404 ? `OpenAI does not know the model "${env.OPENAI_MODEL}". Change OPENAI_MODEL in wrangler.toml.`
-      : res.status === 429 ? 'OpenAI says the account is out of credit or rate limited. Check billing.'
-      : `OpenAI answered with status ${res.status}.`;
-    return json({ ok: false, problem }, 200, cors);
+    const res = await openai(env, '/chat/completions', { method: 'POST', body: JSON.stringify(payload) });
+    if (res.ok) return json({ ok: true, model: payload.model, knowledgeChars: facts.length }, 200, cors);
+    const text = (await res.text()).slice(0, 1000);
+    console.error('health: openai answered', res.status, text.slice(0, 300));
+    return json({ ok: false, problem: explain(res.status, text, env) }, 200, cors);
   } catch (err) {
     console.error('health: fetch failed', String(err));
     return json({ ok: false, problem: 'Could not reach OpenAI.' }, 200, cors);
@@ -135,7 +160,7 @@ export default {
 
     if (url.pathname === '/health' && request.method === 'GET') return health(request, env, cors || {});
     if (url.pathname === '/chat' && request.method === 'POST') {
-      if (!env.OPENAI_API_KEY) return json({ error: 'The assistant is not set up yet.' }, 503, cors || {});
+      if (!env.PORTFOLIO_CHAT_API) return json({ error: 'The assistant is not set up yet.' }, 503, cors || {});
       return chat(request, env, cors || {});
     }
     return new Response('Adhik portfolio assistant', { status: 200, headers: cors || {} });

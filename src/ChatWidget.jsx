@@ -96,6 +96,7 @@ export default function ChatWidget() {
       else setMsgs((m) => [...m, { role: 'assistant', error: true, content: data.error || `Sorry, I couldn't answer that just now. You can email Adhik at ${PERSON.email}.` }]);
     } catch (err) {
       if (err && err.name === 'AbortError' && !abortRef.current) return;
+      if (import.meta.env.DEV) console.warn(`[chat] could not reach ${CHAT_URL}/chat from ${location.origin}. If the line above says CORS, this address is not allowed: add ${location.origin} to ALLOWED_ORIGINS in chatbot-worker/wrangler.toml and run npm run deploy.`, err);
       setMsgs((m) => [...m, { role: 'assistant', error: true, content: `I couldn't reach the assistant. You can email Adhik at ${PERSON.email}.` }]);
     } finally {
       clearTimeout(timer);

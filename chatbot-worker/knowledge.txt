@@ -30,7 +30,119 @@ About the site: his portfolio features a 3D avatar of him that reacts as you scr
 
 == RESUME ==
 // BEGIN RESUME
-// (empty: run  npm run feed -- resume.pdf  or paste your resume text between the BEGIN and END lines)
+Adhik Chintalwar • Resume draft for review
+
+ADHIK CHINTALWAR
+
+Software Engineer | Atlanta, GA | [phone number not shared] | adhikchintalwar550@gmail.com
+
+PROFESSIONAL SUMMARY
+
+Software Engineer developing enterprise applications, API integrations, and AI-enabled workflows. Experience
+
+delivering full-stack React/.NET solutions, Python/FastAPI services, MCP-based integrations, and technical support
+
+for hospitality property management software. Builds independent AI and software products spanning personal
+
+productivity, financial research, healthcare technology, and interview preparation.
+
+TECHNICAL SKILLS
+
+Languages & frameworks: Python, C#, JavaScript, TypeScript, SQL, React, React Native, .NET, FastAPI
+
+AI & integration: LangGraph, Model Context Protocol (MCP), REST APIs, Ollama, AI agent workflows
+
+Cloud & developer tools: Microsoft Azure, Git, GitHub, Expo, Vite, Playwright, SQL databases
+
+Engineering: Full-stack development, backend APIs, master-data migration, enterprise integration, production
+
+troubleshooting
+
+PROFESSIONAL EXPERIENCE
+
+Software Engineer | Agilysys — Atlanta, GA | March 2025 – Present | Full-time
+
+ Onboarding Tool: Developed an internal full-stack onboarding application using React and .NET, owning
+
+frontend, backend, and API integration work.
+
+ Implemented master-data entry and management workflows and REST API-based migration into Agilysys
+
+software.
+
+ OrchestrAI: Developed MCP integrations, integration logic, and FastAPI endpoints for an AI-enabled internal
+
+enterprise integration platform.
+
+ Contributed API and tool functionality supporting chatbot-initiated workflows orchestrated through LangGraph
+
+across Agilysys and third-party systems.
+
+ Provide technical support for Agilysys Property Management System (PMS) customers, investigating production
+
+incidents, software configuration, and operational issues.
+
+ Troubleshoot SQL/database issues, API failures, application logs, data synchronization, and third-party
+
+integration problems; collaborate on resolution and escalation.
+
+EDUCATION
+
+University of Alabama at Birmingham | M.S. Computer Science | Jun 2023 – Dec 2024
+
+SRM University, Chennai, India | Bachelor of Technology | Jun 2019 – Jun 2023
+
+Adhik Chintalwar • Resume draft for review
+
+SELECTED INDEPENDENT PROJECTS
+
+MediCoreRx | Healthcare & Pharmacy Software Platform
+
+ Developing a healthcare and pharmacy technology platform intended to support pharmacy operations and
+
+digital services in India.
+
+ Explored Azure-based hosting and product infrastructure; implemented modules and current release status to be
+
+detailed in the next revision.
+
+BABY / Jarvis | AI Personal Assistant & Investment Intelligence Platform
+
+ Built a personal-assistant system that responds to user commands and uses MCP-connected tools and LangGraph-
+
+based agent workflows for task orchestration.
+
+ Worked with Python and local AI tooling for assistant workflows, including speech recognition and tool-driven
+
+automation.
+
+ Developed a separate financial research and paper-trading subsystem with a FastAPI backend, React dashboards,
+
+risk-validation workflows, and performance reports.
+
+AI Interview OS | Mobile Interview Preparation Application
+
+ Built a React Native / Expo mobile app for interview preparation; configured authentication and local/mobile
+
+development workflows.
+
+ Worked on AI-assisted answer evaluation and personalized learning features; advanced evaluation and cloud
+
+synchronization are pending final verification.
+
+Interactive Developer Portfolio | React / Vite / GitHub Pages
+
+ Developed and published a responsive personal portfolio using React and Vite with GitHub Pages deployment.
+
+ Prototyped cinematic, cursor-responsive character interactions and frame-based animations for a redesigned
+
+portfolio experience.
+
+PROJECT STATUS & REVIEW
+
+Project descriptions above are preliminary and intentionally avoid unverified performance metrics, user counts,
+
+and production claims. Specific modules, architecture, outcomes, and links can be added after review.
 // END RESUME
 
 == MORE ABOUT ME ==

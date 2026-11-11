@@ -23,11 +23,15 @@ rm -f "$LOG"
 if [ -z "$URL" ]; then echo "Could not read the Worker address from the output above. Copy the https://...workers.dev address into $ROOT/.env as VITE_CHAT_URL=..."; exit 1; fi
 
 echo "4/5 OpenAI key"
-if npx wrangler secret list 2>/dev/null | grep -q '"OPENAI_API_KEY"'; then
-  echo "    Already stored on Cloudflare (to replace it: npx wrangler secret put OPENAI_API_KEY)"
+SECRETS="$(npx wrangler secret list 2>/dev/null || true)"
+if printf '%s' "$SECRETS" | grep -q '"PORTFOLIO_CHAT_API"'; then
+  echo "    Already stored on Cloudflare as PORTFOLIO_CHAT_API (to replace it: npx wrangler secret put PORTFOLIO_CHAT_API)"
 else
-  echo "    Create a key at https://platform.openai.com/api-keys , then paste it below (the typing is hidden) and press Enter."
-  npx wrangler secret put OPENAI_API_KEY
+  echo "    Create a key at https://platform.openai.com/api-keys (Permissions: All), then paste it below (the typing is hidden) and press Enter."
+  npx wrangler secret put PORTFOLIO_CHAT_API
+fi
+if printf '%s' "$SECRETS" | grep -q '"OPENAI_API_KEY"'; then
+  echo "    Note: an older, unused secret named OPENAI_API_KEY is still on Cloudflare. Remove it with: npx wrangler secret delete OPENAI_API_KEY"
 fi
 
 echo "5/5 Connecting your site and checking everything"
