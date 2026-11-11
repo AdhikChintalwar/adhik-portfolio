@@ -4,21 +4,46 @@ const BASE = import.meta.env.BASE_URL;
 const AVATAR_URL = `${BASE}avatar/avatar.glb`;
 const LINES = { left: 'Anyone here on the left?', right: 'Anyone here on the right?' };
 const CENTER_LINES = ['Hey, it’s you!', 'Check out the portfolio'];
+const FPS = 30;
 
-// Tuning knobs. Distances in metres, angles in radians, relative to the avatar's head bone.
+// ---------------------------------------------------------------------------------------------------
+// The avatar file carries six animations (from your Avaturn exports). Each is short, so a "scene" plays
+// a time range of one clip, once or looped, then he settles back to the idle clip.
+//   clip   : animation name inside avatar.glb      from/to : seconds of the clip to play
+//   reps   : how many times to loop (omit to play once)
+//   shot   : camera framing (see SHOTS)            yaw     : turns his whole body (radians)
+//   glasses: sunglasses on while it plays
+// ---------------------------------------------------------------------------------------------------
+const ACTIONS = {
+  think:  { clip: 'think',  from: 0, to: 16.4, shot: 'think' },
+  box:    { clip: 'box',    from: 0, to: 2.3,  shot: 'full' },
+  groove: { clip: 'move',   from: 0, to: 3.9,  shot: 'full' },
+  pushup: { clip: 'pushup', from: 0, to: 1.6,  shot: 'low', reps: 5, yaw: -1.15 },
+  dance:  { clip: 'dance',  from: 0, to: 4.5,  shot: 'full', glasses: true },
+};
+// which animation plays when each section scrolls into view (home = idle)
+const SECTION_ACTION = { about: 'think', experience: 'box', projects: 'groove', skills: 'pushup', contact: 'dance' };
+const ROTATION = ['groove', 'box', 'dance', 'think', 'pushup'];   // what a click / tap on him plays
+const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
+
+// Camera framings. y = look-at height, cy = camera height, d = distance, w = width that must fit.
+const SHOTS = {
+  hero:  { y: 1.3,  cy: 1.38, d: 3.6, w: 1.05 },    // hips up, face readable, headroom for the speech bubble
+  think: { y: 1.28, cy: 1.38, d: 3.6, w: 1.15 },
+  full:  { y: 0.95, cy: 1.3,  d: 4.8, w: 1.7 },     // head to toe, room for big moves
+  low:   { y: 0.3,  cy: 1.15, d: 5.0, w: 2.15 },    // push-ups along the floor
+};
+
 const CFG = {
-  hideMeshes: [],       // extra meshes to hide by name fragment, e.g. ['hair_1']
-  hideGlasses: true,    // hides any mesh named *glasses* (handover: no sunglasses)
-  shirtColor: 0x14171a, // multiplies the clothing texture; set to null to keep the exported colours
-  hold: 2400,           // ms a reaction is held before returning to work
-  cooldown: 500,        // ms before the next reaction can start
-  camDist: 1.45, camFov: 22, camLift: 0.03, targetDrop: 0.09,
-  lidTop: -0.12, lidW: 0.36, lidH: 0.2, lidTilt: 0.2, laptopZ: 0.34,
-  poses: {              // yaw: - looks screen-left, + screen-right; pitch: + looks down
-    idle:   { yaw: 0,     pitch: 0.11,  eyeX: 0,    eyeY: -0.55, smile: 0,   brow: 0 },
-    left:   { yaw: -0.42, pitch: 0.02,  eyeX: -0.6, eyeY: 0,     smile: 0,   brow: 0.1 },
-    right:  { yaw: 0.42,  pitch: 0.02,  eyeX: 0.6,  eyeY: 0,     smile: 0,   brow: 0.1 },
-    center: { yaw: 0,     pitch: -0.01, eyeX: 0,    eyeY: 0.08,  smile: 0.5, brow: 0.2 },
+  fov: 24,
+  fade: 0.45,           // seconds of cross-fade between animations
+  hold: 2400,           // ms a cursor reaction is held before returning
+  cooldown: 500,        // ms before the next cursor reaction can start
+  poses: {              // head glance for the cursor zones. yaw: - looks screen-left, + screen-right
+    idle:   { yaw: 0,     pitch: 0,     eyeX: 0,    eyeY: 0,    smile: 0,   brow: 0 },
+    left:   { yaw: -0.5,  pitch: -0.02, eyeX: -0.7, eyeY: 0,    smile: 0.1, brow: 0.1 },
+    right:  { yaw: 0.5,   pitch: -0.02, eyeX: 0.7,  eyeY: 0,    smile: 0.1, brow: 0.1 },
+    center: { yaw: 0,     pitch: -0.03, eyeX: 0,    eyeY: 0.05, smile: 0.55, brow: 0.2 },
   },
 };
 const RATE = { yaw: 4.5, pitch: 4.5, eyeX: 11, eyeY: 11, smile: 3, brow: 4 };
@@ -42,21 +67,19 @@ export default function AvatarStage() {
       import('three/addons/loaders/GLTFLoader.js'),
       import('three/addons/libs/meshopt_decoder.module.js'),
       import('three/addons/environments/RoomEnvironment.js'),
-      import('three/addons/geometries/RoundedBoxGeometry.js'),
-      import('./gestures.js'),
-    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }, { RoundedBoxGeometry }, { createGestures }]) => {
+    ]).then(([THREE, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }]) => {
       if (dead) return;
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
       loader.load(
         AVATAR_URL,
-        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry, createGestures); },
+        (gltf) => { if (!dead) stop = run(THREE, gltf, RoomEnvironment); },
         undefined,
         () => { if (!dead) setMissing(true); },
       );
     });
 
-    function run(THREE, gltf, RoomEnvironment, RoundedBoxGeometry, createGestures) {
+    function run(THREE, gltf, RoomEnvironment) {
       const V3 = THREE.Vector3, Q = THREE.Quaternion;
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
       renderer.setClearAlpha(0);
@@ -66,98 +89,141 @@ export default function AvatarStage() {
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
       scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      scene.environmentIntensity = 0.3;
+      scene.environmentIntensity = 0.42;
 
-      // ---- find rig parts (works with Mixamo / Ready Player Me style names) ----
+      // ---- the character, inside a group so push-ups can turn him side-on ----
+      const rig = new THREE.Group();
       const root = gltf.scene;
-      scene.add(root);
+      rig.add(root);
+      scene.add(rig);
       const bones = {};
       const meshes = [];
-      root.traverse((o) => {
-        if (o.isMesh) { o.frustumCulled = false; if (o.morphTargetDictionary) meshes.push(o); }
-        if (o.isBone) bones[o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase()] = o;
-      });
+      const glasses = [];
       const aniso = renderer.capabilities.getMaxAnisotropy();
-      // optional look adjustments (no re-export needed)
       root.traverse((o) => {
+        if (o.isBone) bones[o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase()] = o;
         if (!o.isMesh) return;
+        o.frustumCulled = false;
+        if (o.morphTargetDictionary) meshes.push(o);
         const mats = [].concat(o.material || []);
         const tag = `${o.name} ${mats.map((m) => m.name).join(' ')}`.toLowerCase();
-        if (CFG.hideGlasses && tag.includes('glasses')) o.visible = false;
-        if (CFG.hideMeshes.some((n) => tag.includes(n))) o.visible = false;
-        if (CFG.shirtColor != null && tag.includes('_look')) mats.forEach((m) => m.color && m.color.set(CFG.shirtColor));
-        // matte skin: exported skin is fully metallic, which reads as glare on the chin and nose
-        if (tag.includes('_body')) mats.forEach((m) => { m.metalness = 0; });
+        if (tag.includes('glasses')) { o.visible = false; glasses.push(o); }
         mats.forEach((m) => { for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) if (m[k]) m[k].anisotropy = aniso; });
       });
       const spine = bones.spine2 || bones.spine1 || bones.spine;
       const neck = bones.neck, head = bones.head;
-      const eyeL = bones.lefteye, eyeR = bones.righteye;
       if (!head) console.warn('[avatar] no "Head" bone found; head turns will not work');
+
       const morph = {};
-      const setMorph = (name, v) => {
-        const hits = morph[name] || (morph[name] = meshes.filter((m) => name in m.morphTargetDictionary).map((m) => [m, m.morphTargetDictionary[name]]));
-        for (const [m, i] of hits) m.morphTargetInfluences[i] = v;
+      const hits = (name) => morph[name] || (morph[name] = meshes.filter((m) => name in m.morphTargetDictionary).map((m) => [m, m.morphTargetDictionary[name]]));
+      // adds on top of whatever the animation set this frame (the mixer rewrites its own weights every frame)
+      const addMorph = (name, v) => { if (v) for (const [m, i] of hits(name)) m.morphTargetInfluences[i] = Math.min(1, m.morphTargetInfluences[i] + v); };
+      const hasEyeMorph = meshes.some((m) => 'eyeLookOutLeft' in m.morphTargetDictionary);
+
+      // ---- animation: idle loop + scene actions ----
+      const mixer = new THREE.AnimationMixer(root);
+      const clips = Object.fromEntries(gltf.animations.map((c) => [c.name, c]));
+      const seg = (name, from, to) => {
+        const c = clips[name];
+        if (!c) return null;
+        const a = Math.round(from * FPS), b = Math.min(Math.round(to * FPS), Math.round(c.duration * FPS));
+        return THREE.AnimationUtils.subclip(c, `${name}:${from}-${to}`, a, b, FPS);
       };
-      const has = (n) => meshes.some((m) => n in m.morphTargetDictionary);
-      const hasBlink = has('eyeBlinkLeft'), hasEyeMorph = has('eyeLookOutLeft');
-      console.info('[avatar] bones: head', !!head, 'neck', !!neck, 'eyes', !!eyeL,
-        '| morphs: blink', hasBlink, 'smile', has('mouthSmileLeft') || has('mouthSmile'), 'eyeLook', hasEyeMorph);
+      const idleClip = seg('idle', 0.3, 7.9);
+      const idle = mixer.clipAction(idleClip);
+      idle.setLoop(THREE.LoopPingPong, Infinity);
+      const acts = {};
+      for (const [k, a] of Object.entries(ACTIONS)) {
+        const clip = seg(a.clip, a.from, a.to);
+        if (!clip) continue;
+        const act = mixer.clipAction(clip);
+        if (a.reps) act.setLoop(THREE.LoopRepeat, Infinity);
+        else { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; }
+        acts[k] = act;
+      }
+      idle.play();
+      let cur = idle, curName = null, loops = 0;
+      if (reduced) { idle.time = 3; mixer.update(0); mixer.timeScale = 0; }
 
-      // ---- arms: rest pose + gestures (thumbs up, wave, ...) driven from src/gestures.js ----
-      // Created before anything is posed, because it reads the T-pose the file ships in.
-      const gest = createGestures(THREE, bones);
-      gest.snapIdle();
-      root.updateMatrixWorld(true);
-      const rest = new Map([spine, neck, head, eyeL, eyeR].filter(Boolean).map((b) => [b, b.quaternion.clone()]));
-      const H = (head || root).getWorldPosition(new V3());
+      const T = { rigYaw: 0, shot: 'hero' };      // targets for body yaw and camera
+      const goIdle = () => {
+        if (cur === idle) return;
+        idle.reset().play();
+        cur.crossFadeTo(idle, CFG.fade + 0.15, false);
+        cur = idle; curName = null; loops = 0;
+        T.rigYaw = 0; T.shot = 'hero';
+        glasses.forEach((g) => { g.visible = false; });
+      };
+      const play = (name) => {
+        const a = ACTIONS[name], act = acts[name];
+        if (reduced || !a || !act || curName === name) return;
+        act.reset().play();
+        cur.crossFadeTo(act, CFG.fade, false);
+        cur = act; curName = name; loops = 0;
+        T.rigYaw = a.yaw || 0; T.shot = a.shot;
+        glasses.forEach((g) => { g.visible = !!a.glasses; });
+        say(null);
+      };
+      mixer.addEventListener('finished', (e) => { if (e.action === cur) goIdle(); });
+      mixer.addEventListener('loop', (e) => {
+        const a = ACTIONS[curName];
+        if (e.action === cur && a && a.reps && ++loops >= a.reps) goIdle();
+      });
 
-      // ---- laptop (seen from behind), desk, and lights ----
-      const graphite = new THREE.MeshStandardMaterial({ color: 0x2b302e, metalness: 0.85, roughness: 0.45 });
-      const baseY = H.y + CFG.lidTop - CFG.lidH * Math.cos(CFG.lidTilt);
-      const hingeZ = H.z + CFG.laptopZ;
-      const lid = new THREE.Mesh(new RoundedBoxGeometry(CFG.lidW, CFG.lidH, 0.008, 2, 0.004).translate(0, CFG.lidH / 2, 0), graphite);
-      lid.position.set(H.x, baseY, hingeZ);
-      lid.rotation.x = CFG.lidTilt;
-      const keys = new THREE.Mesh(new RoundedBoxGeometry(CFG.lidW, 0.012, 0.24, 2, 0.004).translate(0, 0.006, -0.12), graphite);
-      keys.position.set(H.x, baseY, hingeZ);
-      const desk = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 0.9), new THREE.MeshStandardMaterial({ color: 0x040505, roughness: 1, metalness: 0 }));
-      desk.position.set(H.x, baseY - 0.9, H.z + 0.62);
-      scene.add(lid, keys, desk);
+      // ---- lights, floor, camera ----
+      const key = new THREE.DirectionalLight(0xe6fff4, 1.25);
+      key.position.set(-1.4, 2.6, 2.8);
+      const redRim = new THREE.DirectionalLight(0xff4d5e, 2.6);
+      redRim.position.set(2.4, 1.6, -1.8);
+      const greenRim = new THREE.DirectionalLight(0x2fd39a, 1.7);
+      greenRim.position.set(-2.4, 1.8, -1.6);
+      scene.add(key, redRim, greenRim);
 
-      const screen = new THREE.PointLight(0xcfe6ff, 0.14, 0, 2);
-      screen.position.set(H.x, H.y - 0.12, hingeZ - 0.12);
-      const key = new THREE.DirectionalLight(0xd6fff0, 1.3);
-      key.position.set(H.x - 1, H.y + 0.8, H.z + 1.4);
-      const redRim = new THREE.DirectionalLight(0xff4d5e, 2.4);
-      redRim.position.set(H.x + 1.2, H.y + 0.4, H.z - 1.2);
-      const greenRim = new THREE.DirectionalLight(0x2fd39a, 1.4);
-      greenRim.position.set(H.x - 1.2, H.y + 0.5, H.z - 1.0);
-      scene.add(screen, key, redRim, greenRim);
+      // soft contact shadow + faint green ring under his feet
+      const c2 = document.createElement('canvas');
+      c2.width = c2.height = 256;
+      const g2 = c2.getContext('2d');
+      let gr = g2.createRadialGradient(128, 128, 0, 128, 128, 90);
+      gr.addColorStop(0, 'rgba(0,0,0,0.62)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g2.fillStyle = gr; g2.fillRect(0, 0, 256, 256);
+      gr = g2.createRadialGradient(128, 128, 96, 128, 128, 124);
+      gr.addColorStop(0, 'rgba(47,211,154,0)'); gr.addColorStop(0.5, 'rgba(47,211,154,0.24)'); gr.addColorStop(1, 'rgba(47,211,154,0)');
+      g2.fillStyle = gr; g2.fillRect(0, 0, 256, 256);
+      const floorTex = new THREE.CanvasTexture(c2);
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.1, 2.1),
+        new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false, toneMapped: false }),
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0.003;
+      rig.add(floor);
 
-      const camera = new THREE.PerspectiveCamera(CFG.camFov, 1, 0.1, 20);
-      const lookAt = new V3(H.x, H.y - CFG.targetDrop, H.z);
+      const camera = new THREE.PerspectiveCamera(CFG.fov, 1, 0.1, 30);
+      const cam = { y: SHOTS.hero.y, cy: SHOTS.hero.cy, d: SHOTS.hero.d };
+      let aspect = 1;
+      const shotTarget = () => {
+        const s = SHOTS[T.shot];
+        const need = (s.w / 2) / (Math.tan((CFG.fov * Math.PI) / 360) * aspect);     // keep the width in frame on narrow stages
+        return { y: s.y, cy: s.cy, d: Math.min(9, Math.max(s.d, need)) };
+      };
       const resize = () => {
         const w = wrap.clientWidth || 1, h = wrap.clientHeight || 1;
+        aspect = w / h;
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
         renderer.setSize(w, h, false);
-        camera.aspect = w / h;
-        // pull back on tall (mobile) layouts so the laptop and shoulders stay in frame
-        const need = 0.36 / (Math.tan((CFG.camFov * Math.PI) / 360) * camera.aspect);
-        const d = Math.min(2.3, Math.max(CFG.camDist, need));
-        camera.position.set(H.x, H.y + CFG.camLift, H.z + d);
-        camera.lookAt(lookAt);
+        camera.aspect = aspect;
         camera.updateProjectionMatrix();
+        const t = shotTarget(); Object.assign(cam, t);
       };
 
-      // ---- pose state ----
+      // ---- cursor reactions (head, eyes, face) ----
       const P = { ...CFG.poses.idle };
-      const T = { ...CFG.poses.idle };
-      let react = null, until = 0, cool = 0, lastZone = null, announced = false;
+      const R = { ...CFG.poses.idle };
+      let react = null, until = 0, cool = 0, lastZone = null, announced = false, camX = 0, camXt = 0;
       let visible = true, raf = 0, last = performance.now(), timers = [];
-      let blinkAt = 2000, blinkT = -1, wanderAt = 0, wander = 0, ready_ = false;
+      let blinkAt = 1800, blinkT = -1, wanderAt = 0, wander = 0, ready_ = false, lookW = 1;
 
-      const say = (z) => {
+      function say(z) {
         timers.forEach(clearTimeout);
         timers = [];
         if (!z) return setCue((c) => ({ ...c, show: false }));
@@ -165,31 +231,24 @@ export default function AvatarStage() {
           setCue({ zone: z, text: CENTER_LINES[0], show: true });
           timers.push(setTimeout(() => setCue({ zone: z, text: CENTER_LINES[1], show: true }), 1500));
         } else setCue({ zone: z, text: LINES[z], show: true });
-      };
+      }
       const request = (z, t) => {
+        if (curName) return;                         // he is busy doing something
         if (!react && t < cool) return;
         until = t + CFG.hold;
         if (z === react) return;
         react = z;
-        Object.assign(T, CFG.poses[z]);
+        Object.assign(R, CFG.poses[z]);
         say(z);
       };
 
-      // ---- scroll-triggered gestures ----
-      const SECTION_GESTURE = { about: 'wave', experience: 'nod', projects: 'thumbsUp', skills: 'peace', contact: 'pointAtYou' };
-      const ROTATION = ['thumbsUp', 'wave', 'clap', 'peace', 'pointAtYou', 'nod'];
-      const SECTION_IDS = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
-      let section = 'home', scrolled = 0, lastY = window.scrollY, queued = null, rot = 0;
-      const play = (name) => {
-        if (reduced) return;
-        if (gest.busy) { queued = name; return; }
-        gest.trigger(name);
-      };
+      // ---- scroll: each section starts its animation ----
+      let section = 'home', scrolled = 0, lastY = window.scrollY, rot = 0;
       const sectionNow = () => {
         const line = window.innerHeight * 0.45;
-        let cur = 'home';
-        for (const id of SECTION_IDS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= line) cur = id; }
-        return cur;
+        let now = 'home';
+        for (const id of SECTION_IDS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= line) now = id; }
+        return now;
       };
       const onScroll = () => {
         if (!visible) return;
@@ -199,22 +258,29 @@ export default function AvatarStage() {
         const now = sectionNow();
         if (now !== section) {
           section = now; scrolled = 0;
-          if (SECTION_GESTURE[now]) play(SECTION_GESTURE[now]);
-        } else if (scrolled > 1100) {          // long section: keep him lively while the visitor keeps scrolling
+          if (SECTION_ACTION[now]) play(SECTION_ACTION[now]); else goIdle();
+        } else if (scrolled > 1400 && !curName && SECTION_ACTION[now]) {   // long section: do it again if they keep scrolling
           scrolled = 0;
-          play(ROTATION[rot++ % ROTATION.length]);
+          play(SECTION_ACTION[now]);
         }
       };
 
       const _a = new Q(), _b = new Q(), _d = new Q(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
-      // rotate a bone by a world-space pitch/yaw on top of its rest pose (rig-agnostic)
+      // Rotate a bone by a world-space pitch/yaw on top of whatever the animation did this frame.
+      // Some clips do not animate every bone (e.g. the head in push-ups), so remember our own output and
+      // only treat the bone's value as "fresh animation" when something else changed it.
+      const mine = new Map();
       const turn = (b, pitch, yaw) => {
         if (!b) return;
+        let m = mine.get(b);
+        if (!m) { m = { out: new Q(), base: new Q(), init: false }; mine.set(b, m); }
+        if (!(m.init && b.quaternion.equals(m.out))) m.base.copy(b.quaternion);
         _d.setFromEuler(_e.set(pitch, yaw, 0));
         b.parent.updateWorldMatrix(true, false);
         b.parent.getWorldQuaternion(_b);
-        _a.copy(_b).invert().multiply(_d).multiply(_b).multiply(rest.get(b));
-        b.quaternion.copy(_a);
+        m.out.copy(_b).invert().multiply(_d).multiply(_b).multiply(m.base);
+        m.init = true;
+        b.quaternion.copy(m.out);
         b.updateWorldMatrix(false, false);
       };
 
@@ -224,67 +290,73 @@ export default function AvatarStage() {
         last = t;
         if (!visible || document.hidden) return;
         const sec = t / 1000;
-        const arm = gest.update(dt);
-        if (!gest.busy && queued) { const q = queued; queued = null; play(q); }
+        mixer.update(dt);
 
-        if (react && t >= until) { react = null; Object.assign(T, CFG.poses.idle); cool = t + CFG.cooldown; lastZone = null; say(null); }
-        for (const k in P) P[k] += (T[k] - P[k]) * (reduced ? 1 : 1 - Math.exp(-RATE[k] * dt));
+        // body yaw (push-ups) and camera
+        const k = reduced ? 1 : 1 - Math.exp(-2.6 * dt);
+        rig.rotation.y += (T.rigYaw - rig.rotation.y) * k;
+        const st = shotTarget();
+        cam.y += (st.y - cam.y) * k; cam.cy += (st.cy - cam.cy) * k; cam.d += (st.d - cam.d) * k;
+        camX += (camXt - camX) * (1 - Math.exp(-3 * dt));
+        camera.position.set(camX * 0.6, cam.cy, cam.d);
+        camera.lookAt(camX * 0.25, cam.y, 0);
 
-        // living idle: slow head drift, reading-like eye wander, breathing
+        if (react && t >= until) { react = null; Object.assign(R, CFG.poses.idle); cool = t + CFG.cooldown; lastZone = null; say(null); }
+        for (const key2 in P) P[key2] += (R[key2] - P[key2]) * (reduced ? 1 : 1 - Math.exp(-RATE[key2] * dt));
+
+        // how much the cursor may steer him: fully when idle, a little during an action, never on the floor
+        const want = !curName ? 1 : curName === 'think' ? 0.5 : curName === 'pushup' ? 0 : 0.15;
+        lookW += (want - lookW) * (1 - Math.exp(-4 * dt));
+
         const calm = reduced ? 0 : 1;
-        if (t > wanderAt) { wander = (Math.random() - 0.5) * 0.3; wanderAt = t + 1200 + Math.random() * 2200; }
-        const working = react ? 0.25 : 1;
-        const drift = calm * (Math.sin(sec * 0.5) * 0.012 + Math.sin(sec * 0.83 + 1) * 0.008);
-        const breath = calm * Math.sin(sec * 1.3);
-
-        spine && (turn(spine, breath * 0.01, 0));
-        const yaw = P.yaw + drift * working, pitch = P.pitch + calm * Math.sin(sec * 0.37) * 0.01 + arm.nod;
-        turn(neck, pitch * 0.4, yaw * 0.4);
-        turn(head, pitch * 0.6, yaw * 0.6);
-        root.position.y = breath * 0.0012;
+        if (t > wanderAt) { wander = (Math.random() - 0.5) * 0.25; wanderAt = t + 1400 + Math.random() * 2400; }
+        const yaw = (P.yaw + calm * Math.sin(sec * 0.5) * 0.015) * lookW;
+        const pitch = (P.pitch + calm * Math.sin(sec * 0.37) * 0.01) * lookW;
+        turn(spine, 0, yaw * 0.12);
+        turn(neck, pitch * 0.4, yaw * 0.38);
+        turn(head, pitch * 0.6, yaw * 0.5);
 
         // eyes lead the head
-        const ex = Math.max(-1, Math.min(1, P.eyeX + wander * working)), ey = P.eyeY;
+        const ex = Math.max(-1, Math.min(1, P.eyeX * lookW + wander * lookW)), ey = P.eyeY * lookW;
         if (hasEyeMorph) {
           const l = Math.max(0, -ex), r = Math.max(0, ex);
-          setMorph('eyeLookInLeft', l); setMorph('eyeLookOutRight', l);
-          setMorph('eyeLookOutLeft', r); setMorph('eyeLookInRight', r);
-          setMorph('eyeLookDownLeft', Math.max(0, -ey)); setMorph('eyeLookDownRight', Math.max(0, -ey));
-          setMorph('eyeLookUpLeft', Math.max(0, ey)); setMorph('eyeLookUpRight', Math.max(0, ey));
-        } else {
-          turn(eyeL, -ey * 0.3, ex * 0.4);
-          turn(eyeR, -ey * 0.3, ex * 0.4);
+          addMorph('eyeLookInLeft', l); addMorph('eyeLookOutRight', l);
+          addMorph('eyeLookOutLeft', r); addMorph('eyeLookInRight', r);
+          addMorph('eyeLookDownLeft', Math.max(0, -ey)); addMorph('eyeLookDownRight', Math.max(0, -ey));
+          addMorph('eyeLookUpLeft', Math.max(0, ey)); addMorph('eyeLookUpRight', Math.max(0, ey));
         }
 
-        // blink
+        // blink (on top of anything the animation already does)
         if (blinkT < 0 && t > blinkAt && !reduced) blinkT = 0;
         let blink = 0;
         if (blinkT >= 0) {
           blinkT += dt;
           blink = Math.sin(Math.min(1, blinkT / 0.17) * Math.PI);
-          if (blinkT > 0.17) { blinkT = -1; blinkAt = t + 2200 + Math.random() * 3000; blink = 0; }
+          if (blinkT > 0.17) { blinkT = -1; blinkAt = t + 2200 + Math.random() * 3200; blink = 0; }
         }
-        setMorph('eyeBlinkLeft', blink); setMorph('eyeBlinkRight', blink);
+        addMorph('eyeBlinkLeft', blink); addMorph('eyeBlinkRight', blink);
 
         // expression
-        const sm = P.smile;
-        setMorph('mouthSmileLeft', sm); setMorph('mouthSmileRight', sm); setMorph('mouthSmile', sm);
-        setMorph('cheekSquintLeft', sm * 0.4); setMorph('cheekSquintRight', sm * 0.4);
-        setMorph('browInnerUp', P.brow);
+        const sm = P.smile * lookW;
+        addMorph('mouthSmileLeft', sm); addMorph('mouthSmileRight', sm);
+        addMorph('cheekSquintLeft', sm * 0.4); addMorph('cheekSquintRight', sm * 0.4);
+        addMorph('browInnerUp', P.brow * lookW);
 
         renderer.render(scene, camera);
         if (!ready_) { ready_ = true; setReady(true); }
       };
+
       const onMove = (e) => {
         if (e.pointerType === 'touch') return;
         const x = e.clientX / window.innerWidth;
+        camXt = (x - 0.5) * 0.5;
         const z = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center';
         if (z === lastZone) return;
         lastZone = z;
         request(z, performance.now());
       };
       const onLeave = () => { lastZone = null; if (react) until = Math.min(until, performance.now() + 500); };
-      const onTap = () => { request('center', performance.now()); play(ROTATION[rot++ % ROTATION.length]); };
+      const onTap = () => { play(ROTATION[rot++ % ROTATION.length]); };
 
       const ro = new ResizeObserver(resize);
       ro.observe(wrap);
@@ -293,7 +365,7 @@ export default function AvatarStage() {
         if (visible && touch && !announced) {
           announced = true;
           timers.push(setTimeout(() => request('center', performance.now()), 1400));
-          timers.push(setTimeout(() => play('wave'), 3200));
+          timers.push(setTimeout(() => play('groove'), 4200));
         }
       });
       io.observe(wrap);
@@ -317,7 +389,9 @@ export default function AvatarStage() {
         window.removeEventListener('blur', onLeave);
         window.removeEventListener('scroll', onScroll);
         wrap.removeEventListener('pointerdown', onTap);
+        mixer.stopAllAction();
         scene.traverse((o) => { o.geometry?.dispose?.(); [].concat(o.material || []).forEach((m) => m.dispose?.()); });
+        floorTex.dispose();
         pmrem.dispose();
         renderer.dispose();
         renderer.domElement.remove();
@@ -328,7 +402,7 @@ export default function AvatarStage() {
   }, []);
 
   return (
-    <div className="stage" ref={box} role="img" aria-label="3D avatar of Adhik Chintalwar working on a laptop">
+    <div className="stage" ref={box} role="img" aria-label="3D avatar of Adhik Chintalwar, standing, who reacts as you scroll">
       <div className={`frame${ready ? ' on' : ''}`} ref={frameEl} />
       <p className="bubble" data-zone={cue.zone} data-show={cue.show} aria-live="polite">{cue.text}</p>
       {missing && <p className="missing">Add your avatar file at public/avatar/avatar.glb</p>}

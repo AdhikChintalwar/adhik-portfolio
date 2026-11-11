@@ -63,7 +63,7 @@ export default function App() {
               <span className="cue-desktop">Move your cursor to get my attention</span>
               <span className="cue-touch">Tap to get my attention</span>
             </div>
-            <a className="scroll" href="#about">Scroll to explore <ArrowDown size={16} /></a>
+            <a className="scroll" href="#about">Scroll to see me in action <ArrowDown size={16} /></a>
           </section>
 
           <section className="sec" id="about">
