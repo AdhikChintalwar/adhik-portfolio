@@ -494,6 +494,7 @@ export default function AvatarStage() {
 
       const onMove = (e) => {
         if (e.pointerType === 'touch') return;
+        if (e.target.closest && e.target.closest('.chat')) return;      // he does not react while you use the chat window
         const x = e.clientX / window.innerWidth;
         camXt = (x - 0.5) * 0.5;
         const z = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center';

@@ -1,0 +1,21 @@
+name = "adhik-chat"
+main = "src/index.js"
+compatibility_date = "2025-09-19"
+
+[vars]
+# the site(s) allowed to call this assistant (comma separated, no trailing slash)
+ALLOWED_ORIGINS = "https://adhikchintalwar.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+# the OpenAI model that answers. Change it here and run: npm run deploy
+OPENAI_MODEL = "gpt-6-luna"
+# how hard the model thinks before answering: none | low | medium | high. Leave "" for models that do not support it.
+OPENAI_REASONING = "low"
+OPENAI_BASE = "https://api.openai.com/v1"
+
+# at most 12 questions per minute from one visitor (counted per Cloudflare location)
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "7421"
+
+  [ratelimits.simple]
+  limit = 12
+  period = 60

@@ -10,6 +10,7 @@ import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
 import AvatarStage from './AvatarStage.jsx';
+import ChatWidget from './ChatWidget.jsx';
 import { startReveal } from './reveal.js';
 import { startPalette } from './palette.js';
 import { PERSON, LEDE, ABOUT, SKILLS, WORK, EDUCATION, PROJECTS } from './content.js';
@@ -204,6 +205,7 @@ export default function App() {
           <footer><span>© {new Date().getFullYear()} {PERSON.first} {PERSON.last}</span></footer>
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 }

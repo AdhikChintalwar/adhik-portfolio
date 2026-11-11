@@ -1,0 +1,16 @@
+{
+  "name": "adhik-chat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "bash deploy.sh",
+    "feed": "node scripts/feed.mjs",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "mammoth": "^1.8.0",
+    "pdfjs-dist": "^6.5.438",
+    "wrangler": "^4.0.0"
+  }
+}
