@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { lazy, Suspense, useLayoutEffect } from 'react';
 import {
   ArrowUpRight, ArrowRight, ArrowDown, Github, Linkedin, Download, Mail, Phone, MapPin,
   Code2, BrainCircuit, Cloud, Database, Pill, Mic, TrendingUp, Smartphone, Cpu, LifeBuoy,
@@ -18,6 +18,10 @@ import { startPalette } from './palette.js';
 import { useRoute, takeRestore, restoreScroll } from './router.js';
 import { PERSON, LEDE, ABOUT, SKILLS, WORK, EDUCATION, PROJECTS } from './content.js';
 import { PROJECT_PAGES, PROJECT_CARDS } from './projects/index.js';
+
+// The Skills page (all the logos live in it) is only downloaded when a visitor opens it
+const loadSkills = () => import('./SkillsPage.jsx');
+const SkillsPage = lazy(loadSkills);
 
 const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill, voice: Mic, chart: TrendingUp, remote: Smartphone, systems: Cpu, support: LifeBuoy };
 
@@ -132,6 +136,7 @@ function Home() {
                     {w.bullets.length
                       ? <ul className="bullets">{w.bullets.map((b, i) => <li key={i}><Rich text={b} /></li>)}</ul>
                       : <p>{w.summary}</p>}
+                    {w.tags && w.tags.length > 0 && <div className="tags">{w.tags.map((t) => <span key={t}>{t}</span>)}</div>}
                     {w.href && <a className="text-link" href={w.href} aria-label={`View my ${w.company} role in detail`}>View role details <ArrowRight size={15} /></a>}
                   </div>
                 </li>
@@ -178,6 +183,7 @@ function Home() {
                 return <li key={name}><Icon size={22} /><div><strong>{name}</strong><p>{desc}</p></div></li>;
               })}
             </ul>
+            <a className="text-link" href="#/skills" onPointerEnter={loadSkills} onFocus={loadSkills} aria-label="See every skill, with logos and links to the official websites">All my skills, tools and technologies <ArrowRight size={15} /></a>
           </section>
 
           <section className="sec" id="contact">
@@ -203,9 +209,10 @@ function Home() {
   );
 }
 
-// Which page is showing: the home page, or a project page (the address after the # decides; see router.js)
+// Which page is showing: the home page, the Skills page or a project page (the address after the # decides; see router.js)
 export default function App() {
   const route = useRoute();
+  if (route.page === 'skills') return <Suspense fallback={null}><SkillsPage /></Suspense>;
   const project = route.page === 'project' ? PROJECT_PAGES[route.slug] : null;
   return project ? <ProjectPage key={project.slug} project={project} /> : <Home />;
 }

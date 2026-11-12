@@ -40,14 +40,8 @@ export const WORK = [
     type: 'Full-time',
     summary: 'Internal full-stack tools, AI-enabled integrations, and technical support for Property Management System customers.',
     href: '#/project/agilysys',   // the Agilysys page (src/projects/agilysys.js); empty it to hide the "View role details" link
-    bullets: [               // one string per bullet; **bold** marks a highlighted phrase
-      '**Onboarding Tool:** Developed an internal full-stack onboarding application using React and .NET, owning frontend, backend, and API integration work.',
-      'Implemented master-data entry and management workflows and REST API-based migration into Agilysys software.',
-      '**OrchestrAI:** Developed MCP integrations, integration logic, and FastAPI endpoints for an AI-enabled internal enterprise integration platform.',
-      'Contributed API and tool functionality supporting chatbot-initiated workflows orchestrated through LangGraph across Agilysys and third-party systems.',
-      'Provide technical support for Agilysys Property Management System (PMS) customers, investigating production incidents, software configuration, and operational issues.',
-      'Troubleshoot SQL/database issues, API failures, application logs, data synchronization, and third-party integration problems; collaborate on resolution and escalation.',
-    ],
+    tags: ['React', '.NET', 'REST APIs', 'FastAPI', 'MCP', 'LangGraph', 'SQL'],   // small labels on the card (remove the line to hide them)
+    bullets: [],             // the full details are on the Agilysys page. To list bullets on the home page instead, add them here, one string per bullet; **bold** marks a highlighted phrase
   },
 ];
 
@@ -56,7 +50,6 @@ export const EDUCATION = [
   { school: 'SRM University, Chennai, India', degree: 'Bachelor of Technology', time: 'Jun 2019 – Jun 2023' },
 ];
 
-export const PROJECTS = [
-  { icon: 'ai', name: 'AI Interview OS', desc: 'An interview preparation application exploring AI-powered answer evaluation, personalized learning, and progress tracking.', tags: ['AI', 'React Native', 'Product'] },
-  { icon: 'code', name: 'Full-Stack Engineering', desc: 'Enterprise application development across APIs, modern interfaces, cloud services, and software integrations.', tags: ['Java', 'Angular', '.NET'] },
-];
+// Projects with their own page are listed in src/projects/index.js. Add a card here only for a project that has no page yet:
+//   { icon: 'code', name: 'Project name', desc: 'One or two sentences.', tags: ['Tag', 'Tag'] },
+export const PROJECTS = [];

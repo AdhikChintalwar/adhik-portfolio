@@ -1,0 +1,40 @@
+/* The Skills page (#/skills). Colors, fonts and section borders come from styles.css and project.css. */
+
+/* chips under the heading that jump to a group */
+.sk .sk-jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.sk .sk-jump button { padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: rgba(230, 240, 234, 0.04); color: var(--mint); font: 500 10px var(--body); letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.sk .sk-jump button:hover { border-color: var(--red); background: rgba(163, 28, 27, 0.2); }
+
+/* one group = a grid of skills */
+.sk .sk-content .sec:first-child { padding-top: clamp(20px, 3vh, 36px); }
+.sk .sk-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 14px; }
+.sk .sk-item { min-width: 0; }
+.sk .sk-card { position: relative; display: flex; align-items: center; gap: 16px; height: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; background: rgba(230, 240, 234, 0.035); color: var(--ink); transition: border-color 0.2s, background 0.2s, transform 0.2s; }
+.sk a.sk-card:hover { border-color: rgba(232, 69, 58, 0.65); background: rgba(163, 28, 27, 0.08); transform: translateY(-2px); }
+.sk a.sk-card:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+.sk .sk-card.plain { background: rgba(230, 240, 234, 0.02); border-style: dashed; }
+
+/* the logo sits on a light tile so every brand color reads well on the dark page */
+.sk .sk-mark { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 12px; }
+.sk .sk-mark.logo { background: #f1f6f3; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 16px rgba(0, 0, 0, 0.28); }
+.sk .sk-mark.logo svg { width: 30px; height: 30px; display: block; }
+.sk .sk-mark.glyph { color: var(--acc); background: rgba(143, 208, 174, 0.1); border: 1px solid var(--line); }
+.sk .sk-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sk .sk-name { font: 600 15px / 1.3 var(--body); overflow-wrap: anywhere; }
+.sk .sk-note { font-size: 12px; line-height: 1.35; color: var(--muted); }
+.sk .sk-go { margin-left: auto; flex: none; color: var(--muted); transition: color 0.2s, transform 0.2s; }
+.sk a.sk-card:hover .sk-go { color: var(--red); transform: translate(2px, -2px); }
+
+@media (max-width: 720px) {
+  .sk .sk-grid { grid-template-columns: 1fr; gap: 10px; }
+  .sk .sk-card { gap: 14px; padding: 10px 14px; }
+  .sk .sk-mark { width: 44px; height: 44px; border-radius: 10px; }
+  .sk .sk-mark.logo svg { width: 26px; height: 26px; }
+  .sk .sk-jump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: calc(-1 * clamp(20px, 4vw, 56px)); padding-right: clamp(20px, 4vw, 56px); }
+  .sk .sk-jump::-webkit-scrollbar { display: none; }
+  .sk .sk-jump button { white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk .sk-card, .sk .sk-go { transition: none; }
+  .sk a.sk-card:hover { transform: none; }
+}

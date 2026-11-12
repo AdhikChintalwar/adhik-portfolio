@@ -18,14 +18,12 @@ Portfolio: https://adhikchintalwar.github.io/adhik-portfolio/
 - Bachelor of Technology, SRM University, Chennai, India (Jun 2019 to Jun 2023)
 
 == EXPERIENCE ==
-- Software Engineer, Agilysys, Atlanta, GA (March 2025 to Present, full-time). Building and improving enterprise software systems.
+- Software Engineer, Agilysys, Atlanta, GA (March 2025 to Present, full-time). Internal full-stack tools, AI-enabled integrations, and technical support for Property Management System customers. The details are in the Agilysys notes.
 // The detailed bullets come from your resume (see the RESUME section below).
 
 == FROM HIS PORTFOLIO SITE ==
-Skill areas: AI / ML (intelligent systems and applied AI); full-stack (Java, Angular, .NET); cloud and DevOps (AWS, Azure, deployment); data and systems (APIs, architecture, analytics).
-Projects shown on the site:
-- AI Interview OS: an interview preparation application exploring AI-powered answer evaluation, personalized learning, and progress tracking (AI, React Native, product).
-- Full-Stack Engineering: enterprise application development across APIs, modern interfaces, cloud services, and software integrations (Java, Angular, .NET).
+Skill areas: AI and integrations (LangGraph, MCP, FastAPI); full-stack (React, .NET, Node.js, TypeScript, Java, Angular); cloud and DevOps (AWS, Azure, Docker, Firebase, Cloudflare, GitHub Actions); data and APIs (SQL Server, SQLite, REST APIs, WebSockets); real-time systems (Python, asyncio, WebSockets); enterprise support (Property Management System customer support). The site also has a Skills page listing every tool with its logo and a link to its official website.
+Projects shown on the site: MediCoreRx, Baby Equity Research, Baby Voice Assistant and Mac Remote. Each has its own page; the details are in the project notes.
 About the site: his portfolio features a 3D avatar of him that reacts as you scroll.
 
 == RESUME ==
