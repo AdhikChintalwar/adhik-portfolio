@@ -1,6 +1,13 @@
 // Every project that has its own page. To add another one later: create src/projects/<name>.js like medicorerx.js,
 // list it here, and give it a card (PROJECT_CARDS) so it shows in the Projects section of the home page.
+// The order of PROJECT_CARDS is the order of the cards on the home page.
 import { MEDICORERX, MEDICORERX_CARD } from './medicorerx.js';
+import { BABY_RESEARCH, BABY_RESEARCH_CARD } from './baby-research.js';
+import { BABY_VOICE, BABY_VOICE_CARD } from './baby-voice.js';
 
-export const PROJECT_PAGES = { [MEDICORERX.slug]: MEDICORERX };
-export const PROJECT_CARDS = [MEDICORERX_CARD];
+export const PROJECT_PAGES = {
+  [MEDICORERX.slug]: MEDICORERX,
+  [BABY_RESEARCH.slug]: BABY_RESEARCH,
+  [BABY_VOICE.slug]: BABY_VOICE,
+};
+export const PROJECT_CARDS = [MEDICORERX_CARD, BABY_RESEARCH_CARD, BABY_VOICE_CARD];

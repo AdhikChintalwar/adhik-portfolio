@@ -1,7 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import {
   ArrowUpRight, ArrowRight, ArrowDown, Github, Linkedin, Download, Mail, Phone, MapPin,
-  Code2, BrainCircuit, Cloud, Database, Pill,
+  Code2, BrainCircuit, Cloud, Database, Pill, Mic, TrendingUp,
 } from 'lucide-react';
 import '@fontsource/playfair-display/400.css';
 import '@fontsource/playfair-display/700.css';
@@ -19,7 +19,7 @@ import { useRoute, takeRestore, restoreScroll } from './router.js';
 import { PERSON, LEDE, ABOUT, SKILLS, WORK, EDUCATION, PROJECTS } from './content.js';
 import { PROJECT_PAGES, PROJECT_CARDS } from './projects/index.js';
 
-const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill };
+const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill, voice: Mic, chart: TrendingUp };
 
 // projects with their own page come first, then the ones listed in content.js
 const CARDS = [...PROJECT_CARDS, ...PROJECTS];

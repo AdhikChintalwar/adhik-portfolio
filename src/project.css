@@ -1,4 +1,4 @@
-/* Project pages (MediCoreRx) and the project card on the home page.
+/* Project pages (MediCoreRx, Baby) and the project card on the home page.
    Colors, fonts and the film-strip section borders come from styles.css. This file loads first, so every rule here
    starts with .pj (or is more specific than the home rule it changes) to win over styles.css. */
 
@@ -22,7 +22,7 @@
 .pj-back { display: inline-flex; align-items: center; gap: 10px; margin-bottom: clamp(22px, 4vh, 40px); font-size: 11px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); transition: color 0.2s; }
 .pj-back:hover { color: var(--ink); }
 .pj .eyebrow { margin-bottom: clamp(10px, 1.6vh, 18px); }
-.pj-title { font: 400 clamp(40px, 17cqw, 200px) / 0.95 var(--serif); letter-spacing: -0.025em; white-space: nowrap; color: var(--ink); }
+.pj-title { font: 400 clamp(40px, min(17cqw, calc(170cqw / var(--n, 10))), 200px) / 0.95 var(--serif); letter-spacing: -0.025em; white-space: nowrap; color: var(--ink); }
 .pj-title b { font-weight: 900; color: var(--red); }
 .pj .pj-tagline { max-width: 36ch; margin-top: clamp(18px, 3vh, 30px); font: 400 clamp(22px, 2.7vw, 40px) / 1.22 var(--serif); color: var(--ink); }
 .pj .pj-intro { max-width: 60ch; margin-top: 16px; color: var(--muted); font-size: clamp(15px, 1.15vw, 18px); line-height: 1.6; }
@@ -158,6 +158,65 @@
 .arch-db { border-color: rgba(232, 69, 58, 0.5); }
 .arch figcaption { margin-top: 14px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 
+/* ---------- blocks used by the longer project pages ---------- */
+
+/* the path of one request, as numbered frames joined by arrows */
+.pj-chain { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 12px 30px; counter-reset: c; }
+.pj-chain li { counter-increment: c; position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(230, 240, 234, 0.035); font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.pj-chain li::before { content: counter(c, decimal-leading-zero); font: 900 15px / 1 var(--serif); color: var(--red); }
+.pj-chain.plain li::before { display: none; }
+.pj-chain li:not(:last-child)::after { content: '→'; position: absolute; right: -23px; top: 50%; transform: translateY(-50%); font-size: 15px; font-weight: 400; color: var(--muted); }
+
+/* numbered stages with a short explanation each */
+.pj-stages { list-style: none; padding: 0; margin: 24px 0 0; counter-reset: st; }
+.pj-stages > li { counter-increment: st; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 16px; padding: 24px 0; border-top: 1px solid var(--line); }
+.pj-stages > li:last-child { border-bottom: 1px solid var(--line); }
+.pj-stages > li::before { content: counter(st, decimal-leading-zero); font: 900 34px / 1 var(--serif); color: var(--red); }
+.pj-stages h3 { margin: 2px 0 10px; font: 700 clamp(19px, 1.7vw, 25px) / 1.2 var(--serif); color: var(--ink); }
+.pj .sec .pj-stages p { max-width: 68ch; font-size: clamp(14px, 1.05vw, 16px); line-height: 1.65; color: #bccbc2; }
+.pj .sec .pj-stages p + p { margin-top: 10px; }
+
+/* a stack of boxes joined by arrows */
+.lay { margin: 22px 0 0; }
+.lay-row { position: relative; }
+.lay-row + .lay-row { margin-top: 38px; }
+.lay-row + .lay-row::before { content: ''; position: absolute; left: 50%; top: -33px; height: 28px; width: 1px; background: rgba(220, 240, 228, 0.4); }
+.lay-row + .lay-row::after { content: ''; position: absolute; left: 50%; top: -11px; width: 7px; height: 7px; border-right: 1px solid rgba(220, 240, 228, 0.7); border-bottom: 1px solid rgba(220, 240, 228, 0.7); transform: translate(-50%, 0) rotate(45deg); }
+.lay-wire { position: absolute; left: calc(50% + 14px); top: -26px; font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.lay-nodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.lay-nodes.cols { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+.lay-box { position: relative; padding: 28px 16px 16px; border: 1px dashed rgba(220, 240, 228, 0.28); border-radius: 8px; background: rgba(230, 240, 234, 0.03); }
+.lay .arch-node.hot { border-color: rgba(232, 69, 58, 0.5); }
+.lay figcaption { margin-top: 16px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+
+/* weights drawn as bars */
+.pj-bars { margin: 22px 0 0; display: grid; gap: 12px; max-width: 70ch; }
+.pj-bars > div { display: grid; grid-template-columns: minmax(130px, 210px) minmax(0, 1fr) 48px; align-items: center; gap: 14px; font-size: 14px; color: var(--ink); }
+.pj-bars i { display: block; height: 12px; border-radius: 2px; background: rgba(230, 240, 234, 0.08); }
+.pj-bars u { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--crimson), var(--red)); }
+.pj-bars b { font: 900 18px / 1 var(--serif); color: var(--red); text-align: right; }
+
+/* tables */
+.pj-tablewrap { margin-top: 22px; overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+.pj-table { width: 100%; border-collapse: collapse; font-size: clamp(13px, 1vw, 15px); line-height: 1.5; }
+.pj-table th { padding: 12px 18px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--acc); background: rgba(230, 240, 234, 0.05); border-bottom: 1px solid var(--line); }
+.pj-table td { padding: 12px 18px; vertical-align: top; color: #bccbc2; border-top: 1px solid var(--line); }
+.pj-table tr:first-child td { border-top: 0; }
+.pj-table td:first-child { width: 36%; color: var(--ink); font-weight: 600; }
+.pj-table td:first-child code { font-weight: 500; word-break: break-word; }
+.pj-table td b { color: var(--ink); font-weight: 600; }
+
+/* a line worth remembering */
+.pj-quote { margin: 26px 0 0; padding: 4px 0 4px 22px; max-width: 34ch; border-left: 3px solid var(--red); font: 400 clamp(22px, 2.3vw, 32px) / 1.28 var(--serif); color: var(--ink); }
+.pj-quote b { color: var(--red); font-weight: 900; }
+
+/* groups that hold a plain list */
+.pj-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.pj-group li { position: relative; padding-left: 16px; font-size: 13px; line-height: 1.5; color: #bccbc2; }
+.pj-group li::before { content: ''; position: absolute; left: 0; top: 0.72em; width: 7px; height: 1px; background: var(--red); }
+.pj .sec .pj-links { margin-top: 24px; }
+.pj .sec :is(.pj-bars, .pj-tablewrap, .pj-chain, .lay, .pj-stages, .pj-groups, .pj-quote, .pj-tech, .pj-lessons, .pj-products) + p { margin-top: 24px; }
+
 /* ---------- end of page ---------- */
 .pj .pj-cta { padding: clamp(56px, 8vh, 88px) 0 24px; position: relative; scroll-margin-top: var(--top); }
 .pj .pj-cta::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: linear-gradient(90deg, rgba(220, 240, 228, 0.2) 9px, transparent 9px) 0 0 / 22px 8px; border-top: 1px solid var(--line); border-radius: 2px; }
@@ -176,6 +235,7 @@
 
 /* ---------- tablet and phone ---------- */
 @media (max-width: 960px) {
+  .lay-nodes.cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pj-body { display: block; }
   /* the contents list becomes a row of chips that stays under the top bar */
   .pj-toc { position: sticky; top: var(--top); z-index: 30; margin: 0 calc(-1 * clamp(20px, 4vw, 56px)); padding: 0 clamp(20px, 4vw, 56px); background: rgba(6, 17, 12, 0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
@@ -199,6 +259,15 @@
   .arch-wires span:nth-child(2) { display: none; }
   .arch-apis { flex-direction: column; gap: 12px; }
   .pj-kv > div { grid-template-columns: 1fr; gap: 2px; }
+  .pj-chain { gap: 10px 26px; }
+  .pj-stages > li { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 20px 0; }
+  .pj-stages > li::before { font-size: 26px; }
+  .lay-box { padding: 26px 12px 12px; }
+  .lay-nodes, .lay-nodes.cols { grid-template-columns: 1fr; gap: 10px; }
+  .pj-bars > div { grid-template-columns: minmax(0, 1fr) 44px; gap: 6px 10px; }
+  .pj-bars > div span { grid-column: 1 / -1; }
+  .pj-table th, .pj-table td { padding: 10px 12px; }
+  .pj-table td:first-child { width: 40%; }
   .pj-media { grid-template-columns: 1fr; }
   .pj-lessons article { padding: 20px 18px 8px; }
   .pj-steps li { grid-template-columns: 42px minmax(0, 1fr); }
