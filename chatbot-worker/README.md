@@ -1,10 +1,10 @@
 # "Ask about Adhik": the chat assistant
 
-A chat button sits in the bottom right of the site. Anyone can ask it about you: it answers from the text in `knowledge.txt` (your resume plus the extra details you add) and says "I don't know" for anything that is not there.
+A chat button sits in the bottom right of the site. Anyone can ask it about you: it answers from the text in `knowledge.txt` (your resume plus the extra details you add) and `projects.txt` (the projects that have their own page on the site), and says "I don't know" for anything that is not there.
 
 How it is built, and why it is safe on a public site:
-- GitHub Pages can only serve static files, so the OpenAI key cannot live in the site. It lives in a tiny **Cloudflare Worker** (free plan) that you own. The site talks to the Worker; the Worker talks to OpenAI. The key is stored as a Cloudflare secret and never appears in the site, the repo or the browser.
-- The Worker only accepts calls from your site (`ALLOWED_ORIGINS` in `wrangler.toml`), allows 12 questions a minute per visitor, caps the question and reply size, and hides OpenAI error details from visitors.
+- GitHub Pages can only serve static files, so the OpenAI key cannot live in the site. It lives in a tiny **Cloudflare Worker** (free plan) that you own. The site talks to the Worker; the Worker talks to OpenAI. The key is stored as a Cloudflare secret named `PORTFOLIO_CHAT_API` and never appears in the site, the repo or the browser.
+- The Worker only accepts browser calls from your site (`ALLOWED_ORIGINS` in `wrangler.toml`), plus localhost on any port and your home network so you can test with `npm run dev`, allows 12 questions a minute per visitor, caps the question and reply size, and hides OpenAI error details from visitors.
 - **Chats are not saved and not sent to you.** The Worker keeps no log of conversations. A visitor's own chat is kept only in their browser tab (cleared when the tab closes).
 - The assistant is told to speak about you in the third person, say it is an AI, and not invent anything.
 
@@ -25,12 +25,13 @@ Then run `npm run dev` in the project root and ask the chat a question. When you
 Until `VITE_CHAT_URL` exists, the chat button is **hidden on the live site** and shows a "preview only" message in `npm run dev`.
 
 ## Adding and changing what it knows
-- Everything it knows is `knowledge.txt`. Lines starting with `//` are notes to you and are never sent to OpenAI.
+- Everything it knows is `knowledge.txt` plus `projects.txt` (one section per project page, for example MediCoreRx). Lines starting with `//` in either file are notes to you and are never sent to OpenAI.
 - `npm run feed -- resume.pdf` replaces the part between `// BEGIN RESUME` and `// END RESUME`. Run it again whenever the resume changes.
 - **Phone numbers are hidden by default** (the assistant would give them to any visitor who asks). Add `--keep-phone` to the feed command if you want it shared.
 - "MORE ABOUT ME" is for the things a resume does not say: what roles you want, what you are proud of, how you work, what you are learning, interests, availability, location preferences, work authorization (only what is true and what you are happy to be public).
 - After any edit, run `npm run deploy` again (it is safe to repeat; it keeps the key).
-- `knowledge.txt` is committed to your repository, and the repository is public, so write only what you are comfortable having public. Re-running `apply.sh` never overwrites it.
+- `knowledge.txt` and `projects.txt` are committed to your repository, and the repository is public, so write only what you are comfortable having public. Re-running `apply.sh` never overwrites them.
+- When you change a project page (`src/projects/medicorerx.js`), update its section in `projects.txt` the same way, so the assistant stays in step (for example when the source link is published), then run `npm run deploy`.
 
 ## Cost and safety
 - The default model is `gpt-6-luna`, OpenAI's low-cost model ($0.10 per million input tokens and $0.50 per million output tokens as of November 2026; check OpenAI's pricing page for changes). Your whole `knowledge.txt` is sent with each question, so a typical question costs a small fraction of a cent.
@@ -45,4 +46,4 @@ Open `<your worker address>/health` in a browser. `{"ok":true,...}` means the ke
 ## Turn it off
 - Hide it: delete the `VITE_CHAT_URL` line from `.env`, rebuild, publish.
 - Remove it completely: `npx wrangler delete` inside `chatbot-worker`.
-- Replace the key: `npx wrangler secret put OPENAI_API_KEY`.
+- Replace the key: `npx wrangler secret put PORTFOLIO_CHAT_API`.

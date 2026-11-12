@@ -1,7 +1,7 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect } from 'react';
 import {
   ArrowUpRight, ArrowRight, ArrowDown, Github, Linkedin, Download, Mail, Phone, MapPin,
-  Code2, BrainCircuit, Cloud, Database, Menu, X,
+  Code2, BrainCircuit, Cloud, Database, Pill,
 } from 'lucide-react';
 import '@fontsource/playfair-display/400.css';
 import '@fontsource/playfair-display/700.css';
@@ -11,18 +11,18 @@ import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
 import AvatarStage from './AvatarStage.jsx';
 import ChatWidget from './ChatWidget.jsx';
+import Header, { RESUME } from './Header.jsx';
+import ProjectPage from './ProjectPage.jsx';
 import { startReveal } from './reveal.js';
 import { startPalette } from './palette.js';
+import { useRoute, takeRestore, restoreScroll } from './router.js';
 import { PERSON, LEDE, ABOUT, SKILLS, WORK, EDUCATION, PROJECTS } from './content.js';
+import { PROJECT_PAGES, PROJECT_CARDS } from './projects/index.js';
 
-const BASE = import.meta.env.BASE_URL;
-const RESUME = BASE + 'Adhik_Chintalwar_Resume.pdf';
-const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database };
+const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill };
 
-const links = [
-  ['Home', '#home'], ['About', '#about'], ['Experience', '#experience'],
-  ['Projects', '#projects'], ['Contact', '#contact'],
-];
+// projects with their own page come first, then the ones listed in content.js
+const CARDS = [...PROJECT_CARDS, ...PROJECTS];
 
 // Two words: ADHIK in heavy red, CHINTALWAR in regular mint. Every letter is its own element so it can fly out from behind the avatar (reveal.js, styles.css)
 const NAME = [PERSON.first, PERSON.last];
@@ -71,28 +71,19 @@ function Reel() {
   );
 }
 
-export default function App() {
-  const [menu, setMenu] = useState(false);
+function Home() {
   useLayoutEffect(() => {
+    // coming back from a project page: go to the section that was asked for, or to where the visitor was
+    const back = takeRestore();
+    const cancel = back ? restoreScroll(back) : () => {};
     const stopReveal = startReveal();     // content rolls out from behind the avatar (reveal.js)
     const stopPalette = startPalette();   // the studio re-lights per scene (palette.js)
-    return () => { stopReveal(); stopPalette(); };
+    return () => { cancel(); stopReveal(); stopPalette(); };
   }, []);
   return (
     <div className="site">
       <div className="aurora" aria-hidden="true"><i className="b1" /><i className="b2" /><i className="b3" /></div>
-      <header className="topbar">
-        <a className="logo" href="#home">AC<span>.</span></a>
-        <nav className={menu ? 'nav open' : 'nav'} aria-label="Primary">
-          {links.map(([name, href]) => (
-            <a key={name} href={href} onClick={() => setMenu(false)}>{name}</a>
-          ))}
-        </nav>
-        <a className="header-cta" href={RESUME} target="_blank" rel="noreferrer">Resume <ArrowUpRight size={14} /></a>
-        <button className="menu" aria-label="Toggle navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}>
-          {menu ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </header>
+      <Header />
 
       <div className="split">
         <aside className="col-stage" data-scene="01">
@@ -160,15 +151,16 @@ export default function App() {
             <p className="scene">Scene 04 · Projects</p>
             <h2><b>Selected</b> work</h2>
             <ul className="rows">
-              {PROJECTS.map(({ icon, name, desc, tags }) => {
-                const Icon = ICONS[icon];
+              {CARDS.map(({ icon, name, desc, tags, href }) => {
+                const Icon = ICONS[icon] || Code2;
                 return (
-                  <li key={name}>
+                  <li key={name} className={href ? 'has-link' : undefined}>
                     <span className="when"><Icon size={26} /></span>
                     <div>
                       <h3>{name}</h3>
                       <p>{desc}</p>
                       <div className="tags">{tags.map((t) => <span key={t}>{t}</span>)}</div>
+                      {href && <a className="text-link" href={href} aria-label={`View the ${name} project`}>View project <ArrowRight size={15} /></a>}
                     </div>
                   </li>
                 );
@@ -208,4 +200,11 @@ export default function App() {
       <ChatWidget />
     </div>
   );
+}
+
+// Which page is showing: the home page, or a project page (the address after the # decides; see router.js)
+export default function App() {
+  const route = useRoute();
+  const project = route.page === 'project' ? PROJECT_PAGES[route.slug] : null;
+  return project ? <ProjectPage key={project.slug} project={project} /> : <Home />;
 }

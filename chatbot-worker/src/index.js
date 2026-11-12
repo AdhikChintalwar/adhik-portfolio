@@ -3,6 +3,7 @@
 //  - Nothing is logged or sent to you: a question goes browser -> this Worker -> OpenAI -> back.
 //  - It answers only from knowledge.txt (your resume and the extra details you add).
 import KNOWLEDGE from '../knowledge.txt';
+import PROJECT_NOTES from '../projects.txt';
 
 const MAX_MESSAGES = 12;       // how much of the conversation is sent along
 const MAX_CHARS = 700;         // per message
@@ -10,8 +11,9 @@ const MAX_BODY = 20000;        // bytes
 const MAX_REPLY_TOKENS = 1000; // includes the model's thinking
 const TIMEOUT_MS = 30000;
 
-// lines starting with // in knowledge.txt are notes for you, not for the assistant
-const facts = KNOWLEDGE.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').trim();
+// lines starting with // in knowledge.txt and projects.txt are notes for you, not for the assistant
+const strip = (text) => text.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').trim();
+const facts = [strip(KNOWLEDGE), strip(PROJECT_NOTES)].filter(Boolean).join('\n\n');
 
 const INSTRUCTIONS = `You are the AI assistant on Adhik Chintalwar's portfolio website. Visitors (recruiters, hiring managers, collaborators, friends) ask you about Adhik.
 
