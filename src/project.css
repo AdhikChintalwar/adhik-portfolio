@@ -31,7 +31,7 @@
 .pj .pj-hero button.btn { background: none; color: inherit; font-family: var(--body); cursor: pointer; }
 .pj .pj-hero button.btn.primary { background: var(--crimson); }
 .pj .pj-note { max-width: 62ch; margin-top: 18px; font-size: 13px; line-height: 1.55; color: var(--muted); }
-.pj-facts { position: relative; list-style: none; padding: 0; margin-top: clamp(32px, 6vh, 56px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.pj-facts { position: relative; list-style: none; padding: 0; margin-top: clamp(32px, 6vh, 56px); display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .pj-facts::before, .pj-facts::after { content: ''; position: absolute; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, rgba(220, 240, 228, 0.2) 9px, transparent 9px) 0 0 / 22px 8px; }
 .pj-facts::before { top: -10px; }
 .pj-facts::after { bottom: -10px; }

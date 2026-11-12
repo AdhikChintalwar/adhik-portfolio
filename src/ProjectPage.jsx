@@ -192,6 +192,7 @@ function Lightbox({ item, onClose, onPrev, onNext, many }) {
 
 export default function ProjectPage({ project: p }) {
   const media = p.media || [];
+  const back = { href: '#projects', label: 'All projects', cta: 'Back to portfolio', ...(p.back || {}) };
   const list = useMemo(() => {
     const all = [...p.sections];
     if (media.length > 0) all.splice(1, 0, SCREENS);
@@ -257,7 +258,7 @@ export default function ProjectPage({ project: p }) {
 
       <main className="pj-wrap">
         <header className="pj-hero">
-          <a className="pj-back" href="#projects"><ArrowLeft size={14} /> All projects</a>
+          <a className="pj-back" href={back.href}><ArrowLeft size={14} /> {back.label}</a>
           <p className="eyebrow"><span>{p.eyebrow}</span></p>
           <h1 className="pj-title" aria-label={p.name} style={{ '--n': (p.title[0] + p.title[1]).length }}><b>{p.title[0]}</b>{p.title[1]}</h1>
           <p className="pj-tagline">{p.tagline}</p>
@@ -266,10 +267,10 @@ export default function ProjectPage({ project: p }) {
           <div className="actions">
             {p.live && <a className="btn primary" href={p.live} target="_blank" rel="noreferrer">Open live site <ArrowUpRight size={14} /></a>}
             {p.repo && <a className={p.live ? 'btn' : 'btn primary'} href={p.repo} target="_blank" rel="noreferrer"><Github size={15} /> View source <ArrowUpRight size={14} /></a>}
-            <button type="button" className={p.repo || p.live ? 'btn' : 'btn primary'} onClick={() => go(list[1].id)}>{media.length ? 'See the screens' : 'Read the build'} <ArrowRight size={14} /></button>
+            <button type="button" className={p.repo || p.live ? 'btn' : 'btn primary'} onClick={() => go(list[1].id)}>{media.length ? 'See the screens' : (p.readLabel || 'Read the build')} <ArrowRight size={14} /></button>
           </div>
           {p.heroNote && <p className="pj-note">{p.heroNote}</p>}
-          <ul className="pj-facts" aria-label="At a glance">
+          <ul className="pj-facts" aria-label="At a glance" style={{ '--cols': p.facts.length }}>
             {p.facts.map((f) => <li key={f.label}><b>{f.n}</b><span>{f.label}</span></li>)}
           </ul>
         </header>
@@ -313,7 +314,7 @@ export default function ProjectPage({ project: p }) {
               <p className="scene">Next</p>
               <h2><b>Keep</b> exploring</h2>
               <div className="actions">
-                <a className="btn" href="#projects"><ArrowLeft size={14} /> Back to portfolio</a>
+                <a className="btn" href={back.href}><ArrowLeft size={14} /> {back.cta}</a>
                 {p.repo && <a className="btn" href={p.repo} target="_blank" rel="noreferrer"><Github size={15} /> View source <ArrowUpRight size={14} /></a>}
                 <a className="btn primary" href="#contact">Get in touch</a>
               </div>

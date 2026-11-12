@@ -1,7 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import {
   ArrowUpRight, ArrowRight, ArrowDown, Github, Linkedin, Download, Mail, Phone, MapPin,
-  Code2, BrainCircuit, Cloud, Database, Pill, Mic, TrendingUp, Smartphone,
+  Code2, BrainCircuit, Cloud, Database, Pill, Mic, TrendingUp, Smartphone, Cpu, LifeBuoy,
 } from 'lucide-react';
 import '@fontsource/playfair-display/400.css';
 import '@fontsource/playfair-display/700.css';
@@ -19,7 +19,7 @@ import { useRoute, takeRestore, restoreScroll } from './router.js';
 import { PERSON, LEDE, ABOUT, SKILLS, WORK, EDUCATION, PROJECTS } from './content.js';
 import { PROJECT_PAGES, PROJECT_CARDS } from './projects/index.js';
 
-const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill, voice: Mic, chart: TrendingUp, remote: Smartphone };
+const ICONS = { ai: BrainCircuit, code: Code2, cloud: Cloud, data: Database, health: Pill, voice: Mic, chart: TrendingUp, remote: Smartphone, systems: Cpu, support: LifeBuoy };
 
 // projects with their own page come first, then the ones listed in content.js
 const CARDS = [...PROJECT_CARDS, ...PROJECTS];
@@ -124,7 +124,7 @@ function Home() {
             <h2><b>Where</b> I’ve built</h2>
             <ul className="rows">
               {WORK.map((w) => (
-                <li key={w.company}>
+                <li key={w.company} className={w.href ? 'has-link' : undefined}>
                   <span className="when">{w.time}</span>
                   <div>
                     <h3>{w.company}</h3>
@@ -132,6 +132,7 @@ function Home() {
                     {w.bullets.length
                       ? <ul className="bullets">{w.bullets.map((b, i) => <li key={i}><Rich text={b} /></li>)}</ul>
                       : <p>{w.summary}</p>}
+                    {w.href && <a className="text-link" href={w.href} aria-label={`View my ${w.company} role in detail`}>View role details <ArrowRight size={15} /></a>}
                   </div>
                 </li>
               ))}
